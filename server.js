@@ -2,17 +2,21 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const app = express();
-const PORT = 3000;
+
+// Für Render anpassbar: PORT von Umgebung oder 3000
+const PORT = process.env.PORT || 3000;
 
 app.use(express.static("public"));
 app.use(express.json());
 
+// Pfade zu JSON-Dateien
 const ANSWERS_PATH = path.join(__dirname, "data", "teamAnswers.json");
 const CORRECT_PATH = path.join(__dirname, "data", "correctAnswers.json");
 const ROUND_PATH = path.join(__dirname, "data", "currentRound.json");
 const TEAMS_PATH = path.join(__dirname, "data", "teams.json");
 const SCORES_PATH = path.join(__dirname, "data", "scores.json");
 
+// Team-Antworten abrufen
 app.get("/data/teamAnswers.json", (req, res) => {
   fs.readFile(ANSWERS_PATH, "utf8", (err, data) => {
     if (err) return res.json({});
@@ -20,6 +24,7 @@ app.get("/data/teamAnswers.json", (req, res) => {
   });
 });
 
+// Team-Antworten absenden
 app.post("/submit-answers", (req, res) => {
   const { teamName, answers, round } = req.body;
 
@@ -40,6 +45,7 @@ app.post("/submit-answers", (req, res) => {
   });
 });
 
+// Korrekte Antworten abrufen
 app.get("/correct-answers", (req, res) => {
   fs.readFile(CORRECT_PATH, "utf8", (err, data) => {
     if (err) return res.json({});
@@ -47,6 +53,7 @@ app.get("/correct-answers", (req, res) => {
   });
 });
 
+// Korrekte Antworten speichern
 app.post("/save-correct-answers", (req, res) => {
   fs.readFile(CORRECT_PATH, "utf8", (err, data) => {
     const json = err ? {} : JSON.parse(data);
@@ -57,6 +64,7 @@ app.post("/save-correct-answers", (req, res) => {
   });
 });
 
+// Aktuelle Runde abrufen
 app.get("/current-round", (req, res) => {
   fs.readFile(ROUND_PATH, "utf8", (err, data) => {
     if (err) return res.json({ round: 0 });
@@ -64,12 +72,14 @@ app.get("/current-round", (req, res) => {
   });
 });
 
+// Aktuelle Runde setzen
 app.post("/current-round", (req, res) => {
   fs.writeFile(ROUND_PATH, JSON.stringify(req.body, null, 2), () => {
     res.sendStatus(200);
   });
 });
 
+// Teams abrufen
 app.get("/teams", (req, res) => {
   fs.readFile(TEAMS_PATH, "utf8", (err, data) => {
     if (err) return res.json([]);
@@ -77,6 +87,7 @@ app.get("/teams", (req, res) => {
   });
 });
 
+// Team registrieren
 app.post("/register-team", (req, res) => {
   const { teamName } = req.body;
 
@@ -93,7 +104,7 @@ app.post("/register-team", (req, res) => {
   });
 });
 
-// Scores speichern
+// Punktestand speichern
 app.post("/save-scores", (req, res) => {
   fs.writeFile(SCORES_PATH, JSON.stringify(req.body, null, 2), (err) => {
     if (err) {
@@ -104,6 +115,7 @@ app.post("/save-scores", (req, res) => {
   });
 });
 
+// Punktestand abrufen
 app.get("/scores", (req, res) => {
   fs.readFile(SCORES_PATH, "utf-8", (err, data) => {
     if (err) return res.json({});
@@ -111,6 +123,7 @@ app.get("/scores", (req, res) => {
   });
 });
 
+// Server starten
 app.listen(PORT, () => {
   console.log(`Server läuft auf http://localhost:${PORT}`);
 });
