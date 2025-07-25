@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ergebnisse</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      text-align: center;
+      padding: 2rem;
+      font-family: sans-serif;
+    }
+    h1 {
+      margin-bottom: 1.5rem;
+    }
+    table {
+      margin: 1rem auto;
+      border-collapse: collapse;
+      font-size: 1.2rem;
+      display: none;
+    }
+    th, td {
+      border: 1px solid #999;
+      padding: 0.5rem 1rem;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    #singleResult {
+      font-size: 1.5rem;
+      margin-top: 2rem;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Endergebnisse</h1>
+
+  <div id="singleResult"></div>
+  <button id="nextBtn" onclick="zeigeNaechstes()">Nächster Platz</button>
+  <button onclick="zeigeAlle()">Alle anzeigen</button>
+
+  <table id="resultsTable">
+    <thead>
+      <tr>
+        <th>Platz</th>
+        <th>Team</th>
+        <th>Punkte</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Ergebnisse werden hier eingefügt -->
+    </tbody>
+  </table>
+
+  <script>
+    let teams = [];
+    let index = 0;
+
+    fetch("/scores")
+      .then(res => res.json())
+      .then(scores => {
+        teams = Object.entries(scores).map(([team, punkteObj]) => {
+          const punkte = Object.values(punkteObj).reduce((a, b) => a + b, 0);
+          return { team, punkte };
+        });
+
+        teams.sort((a, b) => b.punkte - a.punkte);
+        zeigeNaechstes(); // Erstes Team direkt anzeigen
+      })
+      .catch(err => {
+        document.getElementById("singleResult").textContent = "Fehler beim Laden der Daten.";
+        console.error(err);
+      });
+
+    function zeigeNaechstes() {
+      if (index < teams.length) {
+        const { team, punkte } = teams[index];
+        document.getElementById("singleResult").innerHTML = `<strong>Platz ${index + 1}:</strong> ${team} mit <strong>${punkte}</strong> Punkten`;
+        index++;
+      } else {
+        document.getElementById("singleResult").innerHTML = "🎉 Alle Plätze wurden angezeigt!";
+        document.getElementById("nextBtn").disabled = true;
+      }
+    }
+
+    function zeigeAlle() {
+      document.getElementById("resultsTable").style.display = "table";
+      const tbody = document.getElementById("resultsTable").querySelector("tbody");
+      tbody.innerHTML = "";
+      teams.forEach((t, i) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${i + 1}</td><td>${t.team}</td><td>${t.punkte}</td>`;
+        tbody.appendChild(row);
+      });
+    }
+  </script>
+</body>
+</html>

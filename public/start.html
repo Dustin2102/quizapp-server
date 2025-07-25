@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Willkommen zum Quiz</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      text-align: center;
+      padding: 2rem;
+      font-family: sans-serif;
+    }
+    img {
+      width: 200px;
+      margin-bottom: 1rem;
+    }
+    input {
+      padding: 0.5rem;
+      font-size: 1rem;
+      width: 250px;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <img src="logo.png" alt="Quiz Logo" />
+  <h1>Willkommen zur Römix & Schildis Quizshow!</h1>
+  <p>Gib deinen Teamnamen ein, um teilzunehmen:</p>
+  <input type="text" id="teamName" placeholder="Teamname" />
+  <br />
+  <button onclick="startQuiz()">Los geht's!</button>
+
+  <script>
+    const storedName = localStorage.getItem("teamName");
+    if (storedName) {
+      window.location.href = "team.html";
+    }
+
+    async function startQuiz() {
+      const name = document.getElementById("teamName").value.trim();
+      if (!name) {
+        alert("Bitte gib einen Teamnamen ein.");
+        return;
+      }
+
+      // speichern im localStorage
+      localStorage.setItem("teamName", name);
+
+      // beim Server registrieren
+      const res = await fetch("/register-team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamName: name }),
+      });
+
+      if (res.status === 409) {
+        const weiter = confirm("Dieser Teamname wurde bereits verwendet. Trotzdem weitermachen?");
+        if (!weiter) return;
+      }
+
+      window.location.href = "team.html";
+    }
+  </script>
+</body>
+</html>

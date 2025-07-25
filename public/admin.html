@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin – Auswertung</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Admin – Runden-Auswertung</h1>
+
+  <label for="runde">Runde auswählen:</label>
+  <select id="runde">
+    <option value="1">Runde 1</option>
+    <option value="2">Runde 2</option>
+    <option value="3">Runde 3</option>
+    <option value="4">Runde 4</option>
+    <option value="5">Runde 5</option>
+    <option value="6">Runde 6</option>
+  </select>
+  <button onclick="loadAnswers()">Antworten laden</button>
+
+  <div id="antwortTabelle"></div>
+
+  <h2>Korrekte Antworten eingeben</h2>
+  <form id="correctAnswersForm" onsubmit="saveCorrectAnswers(event)">
+    <div id="correctInputs"></div>
+    <button type="submit">Korrekte Antworten speichern</button>
+  </form>
+
+  <!-- 📊 Button zum Anzeigen der Ergebnisse -->
+  <div style="text-align: center; margin-top: 3rem;">
+    <button onclick="window.location.href='results.html'" style="font-size: 1.2rem;">
+      📊 Ergebnisse anzeigen
+    </button>
+  </div>
+
+  <script>
+    const allScores = {};
+
+    async function loadAnswers() {
+      const round = document.getElementById("runde").value;
+      const res = await fetch("/data/teamAnswers.json");
+      const teamData = await res.json();
+
+      const correctRes = await fetch("/correct-answers");
+      const correctAnswers = await correctRes.json();
+
+      const answers = teamData["round_" + round] || {};
+      const correct = correctAnswers["round_" + round] || {};
+
+      const table = document.createElement("table");
+      table.innerHTML = "<tr><th>Team</th>" +
+        Array.from({ length: 12 }, (_, i) => `<th>Frage ${i + 1}</th>`).join('') +
+        "<th>Zeit</th></tr>";
+
+      const punkteMap = {};
+
+      for (const team in answers) {
+        const tr = document.createElement("tr");
+        const a = answers[team].answers;
+        const ts = new Date(answers[team].timestamp).toLocaleString("de-DE");
+
+        let row = `<td>${team}</td>`;
+        let punkte = 0;
+
+        for (let i = 0; i < 12; i++) {
+          const userAnswer = a[i] || "";
+          const corr = correct[`question_${i + 1}`] || [];
+          const isCorrect = corr.some(c => c.toLowerCase().trim() === userAnswer.toLowerCase().trim());
+
+          if (isCorrect) punkte++;
+
+          row += `<td style="background-color:${isCorrect ? '#c8f7c5' : '#f8d7da'};">${userAnswer}<br>${isCorrect ? '✅' : '❌'}</td>`;
+        }
+
+        row += `<td>${ts}</td>`;
+        tr.innerHTML = row;
+        table.appendChild(tr);
+
+        punkteMap[team] = punkte;
+
+        if (!allScores[team]) allScores[team] = {};
+        allScores[team]["Runde " + round] = punkte;
+      }
+
+      const outputDiv = document.getElementById("antwortTabelle");
+      outputDiv.innerHTML = "";
+      outputDiv.appendChild(table);
+
+      const punkteDiv = document.createElement("div");
+      punkteDiv.innerHTML = "<h2>Punkteübersicht dieser Runde</h2>";
+      const sortedTeams = Object.keys(punkteMap).sort((a, b) => punkteMap[b] - punkteMap[a]);
+      const ul = document.createElement("ul");
+      sortedTeams.forEach(team => {
+        const li = document.createElement("li");
+        li.textContent = `${team}: ${punkteMap[team]} Punkte`;
+        ul.appendChild(li);
+      });
+      punkteDiv.appendChild(ul);
+      outputDiv.appendChild(punkteDiv);
+
+      const alleRunden = [...new Set(Object.values(allScores).flatMap(obj => Object.keys(obj)))].sort();
+      const gesamtDiv = document.createElement("div");
+      gesamtDiv.innerHTML = "<h2>Gesamtranking</h2>";
+
+      const rankingTable = document.createElement("table");
+      let header = "<tr><th>Team</th>";
+      alleRunden.forEach(r => header += `<th>${r}</th>`);
+      header += "<th>Gesamt</th></tr>";
+      rankingTable.innerHTML = header;
+
+      Object.entries(allScores).forEach(([team, punkteObj]) => {
+        let zeile = `<tr><td>${team}</td>`;
+        let summe = 0;
+        alleRunden.forEach(runde => {
+          const pkt = punkteObj[runde] || 0;
+          summe += pkt;
+          zeile += `<td>${pkt}</td>`;
+        });
+        zeile += `<td><strong>${summe}</strong></td></tr>`;
+        rankingTable.innerHTML += zeile;
+      });
+
+      gesamtDiv.appendChild(rankingTable);
+      outputDiv.appendChild(gesamtDiv);
+
+      // Score-Datei speichern
+      await fetch("/save-scores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(allScores),
+      });
+
+      // Korrekte Antworten vorbefüllen
+      const inputDiv = document.getElementById("correctInputs");
+      inputDiv.innerHTML = "";
+      for (let i = 0; i < 12; i++) {
+        const val = (correct[`question_${i + 1}`] || [])[0] || "";
+        inputDiv.innerHTML += `<input name="q${i + 1}" placeholder="Frage ${i + 1}" value="${val}" />`;
+        if ((i + 1) % 5 === 0) inputDiv.innerHTML += "<br>";
+      }
+    }
+
+    async function saveCorrectAnswers(e) {
+      e.preventDefault();
+      const form = document.getElementById("correctAnswersForm");
+      const round = document.getElementById("runde").value;
+      const formData = new FormData(form);
+      const answers = {};
+
+      for (let [key, val] of formData.entries()) {
+        const index = key.replace("q", "");
+        answers[`question_${index}`] = [val];
+      }
+
+      const payload = {
+        round: round,
+        correctAnswers: answers,
+      };
+
+      await fetch("/save-correct-answers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      alert("Korrekte Antworten gespeichert!");
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quiz-Start</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      text-align: center;
+      padding: 2rem;
+      font-family: Arial, sans-serif;
+    }
+
+    img {
+      max-height: 240px;
+      margin-bottom: 20px;
+    }
+
+    input {
+      padding: 10px;
+      font-size: 1.2rem;
+      width: 300px;
+      margin: 20px auto;
+      display: block;
+      text-align: center;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 1.1rem;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <img src="logo.png" alt="Quiz-Logo" />
+  <h1>Willkommen zur Römix & Schildis Quizshow</h1>
+  <p>Bitte gib deinen Teamnamen ein, um loszulegen:</p>
+
+  <input type="text" id="teamName" placeholder="z. B. Team Alpha" />
+  <button onclick="startQuiz()">Starten</button>
+
+  <script>
+    function startQuiz() {
+      const name = document.getElementById("teamName").value.trim();
+      if (name.length < 1) {
+        alert("Bitte gib einen Teamnamen ein!");
+        return;
+      }
+      localStorage.setItem("teamName", name);
+      window.location.href = "team.html";
+    }
+  </script>
+</body>
+</html>

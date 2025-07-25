@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teamansicht</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      text-align: center;
+      padding: 2rem;
+      font-family: sans-serif;
+    }
+    input {
+      padding: 0.5rem;
+      margin: 0.3rem;
+      width: 50px;
+      text-align: center;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+    }
+    .abgegeben {
+      font-weight: bold;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>Antwort-Eingabe</h1>
+  <p id="rundeInfo"></p>
+  <form id="antwortForm" onsubmit="submitAnswers(event)">
+    <div id="eingaben"></div>
+    <button type="submit">Abgeben</button>
+  </form>
+  <p id="status"></p>
+
+  <script>
+    const teamName = localStorage.getItem("teamName");
+
+    if (!teamName) {
+      window.location.href = "start.html";
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const rundeInfo = document.getElementById("rundeInfo");
+      const eingabenDiv = document.getElementById("eingaben");
+
+      const res = await fetch("/current-round");
+      const data = await res.json();
+      const aktuelleRunde = parseInt(data.round);
+
+      if (aktuelleRunde >= 7) {
+        window.location.href = "finished.html";
+        return;
+      }
+
+      rundeInfo.textContent = `Aktuelle Runde: ${aktuelleRunde}`;
+      for (let i = 0; i < 12; i++) {
+        eingabenDiv.innerHTML += `<input name="a${i + 1}" required />`;
+        if ((i + 1) % 6 === 0) eingabenDiv.innerHTML += "<br />";
+      }
+
+      // Prüfen ob bereits abgegeben
+      const antwRes = await fetch("/data/teamAnswers.json");
+      const antwData = await antwRes.json();
+      const vorhanden = antwData[`round_${aktuelleRunde}`]?.[teamName];
+
+      if (vorhanden) {
+        document.getElementById("status").textContent = "Du hast diese Runde bereits abgegeben.";
+        document.getElementById("status").className = "abgegeben";
+        document.getElementById("antwortForm").style.display = "none";
+      }
+    });
+
+    async function submitAnswers(e) {
+      e.preventDefault();
+      const form = document.getElementById("antwortForm");
+      const formData = new FormData(form);
+      const answers = [];
+
+      for (let i = 1; i <= 12; i++) {
+        answers.push(formData.get(`a${i}`) || "");
+      }
+
+      const res = await fetch("/current-round");
+      const data = await res.json();
+      const aktuelleRunde = parseInt(data.round);
+
+      const payload = {
+        teamName,
+        round: aktuelleRunde,
+        answers,
+      };
+
+      const response = await fetch("/submit-answers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.status === 200) {
+        document.getElementById("status").textContent = "Antworten erfolgreich abgegeben!";
+        document.getElementById("status").className = "abgegeben";
+        form.style.display = "none";
+      } else if (response.status === 409) {
+        document.getElementById("status").textContent = "Du hast bereits abgegeben.";
+        form.style.display = "none";
+      } else {
+        document.getElementById("status").textContent = "Fehler beim Absenden!";
+      }
+    }
+  </script>
+</body>
+</html>

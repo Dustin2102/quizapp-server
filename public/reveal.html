@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Platz-für-Platz</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      text-align: center;
+      padding: 3rem;
+      font-family: sans-serif;
+    }
+    #platz {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+    #team {
+      font-size: 3rem;
+      font-weight: bold;
+    }
+    #punkte {
+      font-size: 2rem;
+      color: #333;
+      margin-top: 1rem;
+    }
+    button {
+      font-size: 1.2rem;
+      padding: 0.6rem 2rem;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎉 Platzierungen nacheinander anzeigen</h1>
+  <div id="platz"></div>
+  <div id="team"></div>
+  <div id="punkte"></div>
+  <button onclick="zeigeNaechstenPlatz()">▶️ Nächster Platz</button>
+
+  <script>
+    let teams = [];
+    let aktuellerIndex = 0;
+
+    fetch("/scores")
+      .then(res => res.json())
+      .then(scores => {
+        teams = Object.entries(scores).map(([team, punkteObj]) => {
+          const punkte = Object.values(punkteObj).reduce((a, b) => a + b, 0);
+          return { team, punkte };
+        });
+
+        teams.sort((a, b) => b.punkte - a.punkte);
+      })
+      .catch(err => {
+        alert("Fehler beim Laden der Ergebnisse.");
+        console.error(err);
+      });
+
+    function zeigeNaechstenPlatz() {
+      if (aktuellerIndex >= teams.length) {
+        document.getElementById("platz").textContent = "🎊 Alle Platzierungen gezeigt!";
+        document.getElementById("team").textContent = "";
+        document.getElementById("punkte").textContent = "";
+        return;
+      }
+
+      const platz = aktuellerIndex + 1;
+      const eintrag = teams[aktuellerIndex];
+      document.getElementById("platz").textContent = `Platz ${platz}`;
+      document.getElementById("team").textContent = eintrag.team;
+      document.getElementById("punkte").textContent = `${eintrag.punkte} Punkte`;
+
+      aktuellerIndex++;
+    }
+  </script>
+</body>
+</html>
