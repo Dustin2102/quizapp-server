@@ -2,68 +2,66 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Willkommen zum Quiz</title>
+  <title>Quiz Start</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { text-align: center; padding: 2rem; font-family: sans-serif; }
-    img { width: 180px; margin-bottom: 1rem; }
-    input { padding: 0.7rem; font-size: 1rem; width: 260px; margin: 0.4rem auto; display: block; }
-    button { padding: 0.7rem 1.2rem; font-size: 1rem; margin-top: .6rem; }
-    .hint { font-size:.95rem; color:#555; margin-top:.6rem; }
-    .error { color: #c0392b; margin-top:.6rem; }
+    body {
+      text-align: center;
+      padding: 2rem;
+      font-family: sans-serif;
+    }
+    input {
+      padding: 0.5rem;
+      margin: 0.3rem;
+      width: 200px;
+      text-align: center;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+      margin-top: 1rem;
+    }
   </style>
 </head>
 <body>
-  <img src="logo.png" alt="Quiz Logo" />
-  <h1>Willkommen zur Römix & Schildis Quizshow!</h1>
+  <h1>Willkommen zum Quiz</h1>
+  <p>Bitte gib deinen Teamnamen ein:</p>
 
-  <input type="text" id="teamName" placeholder="Teamname" />
-  <input type="text" id="accessCode" placeholder="Zugangscode (vom Moderator)" />
-  <button onclick="startQuiz()">Los geht's!</button>
+  <form id="startForm" onsubmit="registerTeam(event)">
+    <input id="teamName" placeholder="Teamname" required />
+    <br />
+    <button type="submit">Anmelden</button>
+  </form>
 
-  <div class="hint" id="prefillHint" style="display:none;"></div>
-  <div class="error" id="err"></div>
+  <p id="error" class="error"></p>
 
   <script>
-    // ?code=XYZ aus URL vorbefüllen
-    const params = new URLSearchParams(location.search);
-    const urlCode = params.get("code");
-    if (urlCode) {
-      document.getElementById("accessCode").value = urlCode;
-      document.getElementById("prefillHint").style.display = "block";
-      document.getElementById("prefillHint").textContent = "Zugangscode aus QR übernommen.";
-    }
+    async function registerTeam(e) {
+      e.preventDefault();
+      const teamName = document.getElementById("teamName").value.trim();
 
-    const storedName = localStorage.getItem("teamName");
-    if (storedName) document.getElementById("teamName").value = storedName;
-
-    async function startQuiz() {
-      const name = document.getElementById("teamName").value.trim();
-      const code = document.getElementById("accessCode").value.trim();
-      const err = document.getElementById("err");
-      err.textContent = "";
-
-      if (!name) return err.textContent = "Bitte gib einen Teamnamen ein.";
-      if (!code) return err.textContent = "Bitte gib den Zugangscode ein.";
-
-      localStorage.setItem("teamName", name);
-      localStorage.setItem("accessCode", code);
+      if (!teamName) {
+        document.getElementById("error").textContent = "Bitte einen Teamnamen eingeben!";
+        return;
+      }
 
       const res = await fetch("/register-team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamName: name, accessCode: code }),
+        body: JSON.stringify({ teamName }),
       });
 
       if (res.status === 200) {
+        localStorage.setItem("teamName", teamName);
         window.location.href = "team.html";
       } else if (res.status === 409) {
-        const weiter = confirm("Dieser Teamname wurde bereits verwendet. Trotzdem weitermachen?");
-        if (weiter) window.location.href = "team.html";
-      } else if (res.status === 403) {
-        err.textContent = "Zugangscode ist ungültig. Bitte beim Moderator melden.";
+        document.getElementById("error").textContent = "Teamname ist schon vergeben!";
       } else {
-        err.textContent = "Unbekannter Fehler – bitte später erneut versuchen.";
+        document.getElementById("error").textContent = "Fehler bei der Anmeldung!";
       }
     }
   </script>
