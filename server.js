@@ -3,158 +3,181 @@ const fs = require("fs");
 const path = require("path");
 const app = express();
 
-// Für Render anpassbar: PORT von Umgebung oder 3000
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static("public"));
+app.use(express.static("public", { etag: false, lastModified: false, maxAge: 0 }));
 app.use(express.json());
 
-// Pfade zu JSON-Dateien
-const ANSWERS_PATH = path.join(__dirname, "data", "teamAnswers.json");
-const CORRECT_PATH = path.join(__dirname, "data", "correctAnswers.json");
-const ROUND_PATH = path.join(__dirname, "data", "currentRound.json");
-const TEAMS_PATH = path.join(__dirname, "data", "teams.json");
-const SCORES_PATH = path.join(__dirname, "data", "scores.json");
+// Pfade
+const DATA_DIR    = path.join(__dirname, "data");
+const ANSWERS_PATH= path.join(DATA_DIR, "teamAnswers.json");
+const CORRECT_PATH= path.join(DATA_DIR, "correctAnswers.json");
+const ROUND_PATH  = path.join(DATA_DIR, "currentRound.json");
+const TEAMS_PATH  = path.join(DATA_DIR, "teams.json");
+const SCORES_PATH = path.join(DATA_DIR, "scores.json");
 
-// Hilfsfunktion: Datei sicher lesen
-function readJsonSafely(filePath, fallback) {
+// Utils
+function safeRead(file, fallback) {
   try {
-    const raw = fs.readFileSync(filePath, "utf8");
+    const raw = fs.readFileSync(file, "utf8");
     return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
+  } catch { return fallback; }
 }
+function safeWrite(file, obj) {
+  fs.writeFileSync(file, JSON.stringify(obj, null, 2));
+}
+function ensureDir() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+}
+ensureDir();
 
-// ---------- Endpunkte ----------
-
-// Team-Antworten abrufen
+// ---- GETs liefern IMMER gültiges JSON ----
 app.get("/data/teamAnswers.json", (req, res) => {
-  fs.readFile(ANSWERS_PATH, "utf8", (err, data) => {
-    if (err) return res.json({});
-    res.send(data);
-  });
+  const data = safeRead(ANSWERS_PATH, {});
+  res.json(data);
 });
 
-// Team-Antworten absenden
+app.get("/correct-answers", (req, res) => {
+  const data = safeRead(CORRECT_PATH, {});
+  res.json(data);
+});
+
+app.get("/current-round", (req, res) => {
+  const data = safeRead(ROUND_PATH, { round: 0, closed: false });
+  // sanity
+  const round = Number.isFinite(+data.round) ? +data.round : 0;
+  const closed = !!data.closed;
+  res.json({ round, closed });
+});
+
+app.get("/teams", (req, res) => {
+  const data = safeRead(TEAMS_PATH, []);
+  res.json(data);
+});
+
+app.get("/scores", (req, res) => {
+  const data = safeRead(SCORES_PATH, {});
+  res.json(data);
+});
+
+// ---- Antworten absenden ----
 app.post("/submit-answers", (req, res) => {
   const { teamName, answers, round } = req.body;
+  if (!teamName || !Array.isArray(answers)) return res.status(400).send("Bad payload");
 
-  fs.readFile(ANSWERS_PATH, "utf8", (err, data) => {
-    const json = err ? {} : JSON.parse(data || "{}");
-    const key = `round_${round}`;
-    if (!json[key]) json[key] = {};
-    if (!json[key][teamName]) {
-      json[key][teamName] = {
-        answers: Array.isArray(answers) ? answers : [],
-        timestamp: Date.now(),
-      };
-      fs.writeFile(ANSWERS_PATH, JSON.stringify(json, null, 2), () => {
-        res.sendStatus(200);
-      });
-    } else {
-      res.sendStatus(409); // schon abgegeben
+  // Runde prüfen (geschlossen oder nicht?)
+  const roundState = safeRead(ROUND_PATH, { round: 0, closed: false });
+  if (roundState.closed || roundState.round !== round) {
+    return res.status(423).send("Round not open");
+  }
+
+  const data = safeRead(ANSWERS_PATH, {});
+  const key = `round_${round}`;
+  if (!data[key]) data[key] = {};
+  if (data[key][teamName]) return res.sendStatus(409);
+
+  data[key][teamName] = { answers, timestamp: Date.now() };
+  safeWrite(ANSWERS_PATH, data);
+  res.sendStatus(200);
+});
+
+// ---- Korrekte Antworten speichern (ganze Runde) ----
+function toObjectFormat(payload) {
+  // akzeptiert Array ODER Objekt; gibt Objekt mit question_# => string zurück
+  if (Array.isArray(payload)) {
+    const obj = {};
+    payload.forEach((v, i) => { obj[`question_${i + 1}`] = v ?? ""; });
+    return obj;
+  }
+  if (payload && typeof payload === "object") {
+    // falls numerische Keys 0..11 kommen, auch umwandeln
+    const obj = {};
+    const keys = Object.keys(payload);
+    const isNumeric = keys.every(k => String(+k) === k);
+    if (isNumeric) {
+      keys.sort((a,b)=>+a-+b).forEach((k, idx) => { obj[`question_${idx + 1}`] = payload[k] ?? ""; });
+      return obj;
     }
-  });
-});
+    return payload; // already question_#
+  }
+  return {};
+}
 
-// Korrekte Antworten abrufen
-app.get("/correct-answers", (req, res) => {
-  fs.readFile(CORRECT_PATH, "utf8", (err, data) => {
-    if (err) return res.json({});
-    res.send(data);
-  });
-});
-
-// Korrekte Antworten speichern (ganze Runde schreiben)
 app.post("/save-correct-answers", (req, res) => {
   const { round, correctAnswers } = req.body;
-  fs.readFile(CORRECT_PATH, "utf8", (err, data) => {
-    const json = err ? {} : JSON.parse(data || "{}");
-    json[`round_${round}`] = correctAnswers;
-    fs.writeFile(CORRECT_PATH, JSON.stringify(json, null, 2), () => {
-      res.sendStatus(200);
-    });
-  });
+  const r = Number(round);
+  if (!Number.isFinite(r) || r < 1) return res.status(400).send("round missing");
+
+  const store = safeRead(CORRECT_PATH, {});
+  store[`round_${r}`] = toObjectFormat(correctAnswers);
+  safeWrite(CORRECT_PATH, store);
+  res.sendStatus(200);
 });
 
-// Aktuelle Runde abrufen
-app.get("/current-round", (req, res) => {
-  fs.readFile(ROUND_PATH, "utf8", (err, data) => {
-    if (err) return res.json({ round: 0 });
-    res.send(data);
-  });
+// ---- Einzelne richtige Antwort aktualisieren ----
+app.post("/update-correct-answer", (req, res) => {
+  const { round, question, answer } = req.body;
+  const r = Number(round), q = Number(question);
+  if (!Number.isFinite(r) || !Number.isFinite(q)) return res.status(400).send("bad payload");
+
+  const store = safeRead(CORRECT_PATH, {});
+  if (!store[`round_${r}`]) store[`round_${r}`] = {};
+  store[`round_${r}`][`question_${q}`] = answer ?? "";
+  safeWrite(CORRECT_PATH, store);
+  res.sendStatus(200);
 });
 
-// Aktuelle Runde setzen (optional: { round, closed })
+// ---- Runde setzen (inkl. closed) ----
 app.post("/current-round", (req, res) => {
-  const payload = {
-    round: typeof req.body.round === "number" ? req.body.round : 0,
-    closed: !!req.body.closed,
-  };
-  fs.writeFile(ROUND_PATH, JSON.stringify(payload, null, 2), () => {
-    res.sendStatus(200);
-  });
+  const prev = safeRead(ROUND_PATH, { round: 0, closed: false });
+  const round = Number.isFinite(+req.body.round) ? +req.body.round : prev.round;
+  const closed = typeof req.body.closed === "boolean" ? req.body.closed : prev.closed;
+  safeWrite(ROUND_PATH, { round, closed });
+  res.sendStatus(200);
 });
 
-// Teams abrufen
-app.get("/teams", (req, res) => {
-  fs.readFile(TEAMS_PATH, "utf8", (err, data) => {
-    if (err) return res.json([]);
-    res.send(data);
-  });
-});
-
-// Team registrieren
+// ---- Team registrieren ----
 app.post("/register-team", (req, res) => {
   const { teamName } = req.body;
-  fs.readFile(TEAMS_PATH, "utf8", (err, data) => {
-    const json = err ? [] : JSON.parse(data || "[]");
-    if (!json.includes(teamName)) {
-      json.push(teamName);
-      fs.writeFile(TEAMS_PATH, JSON.stringify(json, null, 2), () => {
-        res.sendStatus(200);
-      });
-    } else {
-      res.sendStatus(409); // Name schon vergeben
-    }
-  });
+  if (!teamName || !String(teamName).trim()) return res.status(400).send("teamName missing");
+
+  const list = safeRead(TEAMS_PATH, []);
+  if (list.includes(teamName)) return res.sendStatus(409);
+  list.push(teamName);
+  safeWrite(TEAMS_PATH, list);
+  res.sendStatus(200);
 });
 
-// Punktestand speichern (Gesamtranking-Objekt)
+// ---- Scores speichern/holen ----
 app.post("/save-scores", (req, res) => {
-  fs.writeFile(SCORES_PATH, JSON.stringify(req.body, null, 2), (err) => {
-    if (err) {
-      console.error("Fehler beim Speichern der Punkte:", err);
-      return res.status(500).send("Fehler");
-    }
+  try {
+    safeWrite(SCORES_PATH, req.body || {});
     res.send("Gespeichert");
-  });
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("Fehler");
+  }
 });
 
-// Punktestand abrufen
-app.get("/scores", (req, res) => {
-  fs.readFile(SCORES_PATH, "utf-8", (err, data) => {
-    if (err) return res.json({});
-    res.send(data);
-  });
-});
-
-// 🔥 Teams zurücksetzen (+ Abgaben & Scores leeren, Runde auf 0)
+// ---- Reset für neue Session ----
 app.post("/reset-teams", (req, res) => {
   try {
-    fs.writeFileSync(TEAMS_PATH, JSON.stringify([], null, 2));
-    fs.writeFileSync(ANSWERS_PATH, JSON.stringify({}, null, 2));
-    fs.writeFileSync(SCORES_PATH, JSON.stringify({}, null, 2));
-    fs.writeFileSync(ROUND_PATH, JSON.stringify({ round: 0, closed: false }, null, 2));
-    res.send("Teams, Antworten & Scores zurückgesetzt, Runde auf 0 gesetzt");
-  } catch (err) {
-    console.error("Fehler beim Zurücksetzen:", err);
+    safeWrite(TEAMS_PATH, []);
+    safeWrite(ANSWERS_PATH, {});
+    safeWrite(SCORES_PATH, {});
+    safeWrite(ROUND_PATH, { round: 0, closed: false });
+    res.send("Zurückgesetzt");
+  } catch (e) {
+    console.error(e);
     res.status(500).send("Fehler beim Zurücksetzen");
   }
 });
 
-// Server starten
+// Debug
+app.get("/__debug-round", (req, res) => {
+  res.json(safeRead(ROUND_PATH, { round: 0, closed: false }));
+});
+
 app.listen(PORT, () => {
   console.log(`Server läuft auf http://localhost:${PORT}`);
 });
