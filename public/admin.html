@@ -70,6 +70,7 @@
     </select>
     <button class="btn primary" onclick="setSelectedRoundOpen()">Setzen & öffnen</button>
     <button class="btn warn" onclick="closeCurrent()">Nur schließen</button>
+    <button class="btn danger" onclick="resetEverything()">Alles zurücksetzen</button>
   </div>
 
   <h2>Punktetabelle (Gesamt)</h2>
@@ -120,6 +121,15 @@
       setRound(state.round, true);
     }
 
+    async function resetEverything() {
+      const ok = confirm("Wirklich ALLES zurücksetzen? (Teams, Antworten, Punkte; Runde → 0)");
+      if (!ok) return;
+      await fetch("/reset-teams", { method: "POST" });
+      await fetchRound();
+      await heavyRefresh();
+      alert("Zurückgesetzt.");
+    }
+
     async function loadScores() {
       const res = await fetch("/scores"); const scores = await res.json();
       const resTeams = await fetch("/teams"); const teams = await resTeams.json();
@@ -143,12 +153,10 @@
       teams.forEach(t => { const li=document.createElement("li"); li.textContent=t; ul.appendChild(li); });
     }
 
-    // Liest korrekte Antworten – unterstützt Objekt (question_#) UND Array
     function getCorrectListForQuestion(corrRound, qIndex) {
       if (!corrRound) return [];
       const objVal = corrRound[`question_${qIndex}`];
       if (typeof objVal !== "undefined") return normalizeCorrect(objVal);
-      // Fallback: Array-Format
       const arrVal = corrRound[qIndex - 1];
       return normalizeCorrect(arrVal);
     }
@@ -196,7 +204,6 @@
       html += "</table>";
       target.innerHTML = html;
 
-      // Click-to-correct
       target.querySelectorAll("td.no").forEach(td=>{
         td.addEventListener("click", async ()=>{
           const rr = td.dataset.round, q = td.dataset.q, ua = (td.dataset.user||"").trim();
@@ -209,7 +216,6 @@
         });
       });
 
-      // Scores mergen & speichern
       for (const team in punkteMap) {
         if (!scoresData[team]) scoresData[team] = {};
         scoresData[team][`Runde ${r}`] = punkteMap[team];
@@ -223,17 +229,12 @@
     async function addVariantToCorrect(round, question, newVar) {
       const corr = await (await fetch("/correct-answers")).json();
       const keyR = `round_${round}`, keyQ = `question_${question}`;
-
-      // Hole bisherige (Objekt- oder Array-Format)
       let prev = corr[keyR] || {};
       let curr = (typeof prev[keyQ] !== "undefined") ? prev[keyQ] : prev[question - 1];
       let list = normalizeCorrect(curr);
       if (!list.some(v => v.toLowerCase() === newVar.toLowerCase())) list.push(newVar);
-
-      // Schreibe im Objektformat
       if (!corr[keyR]) corr[keyR] = {};
       corr[keyR][keyQ] = list.join(", ");
-
       await fetch("/update-correct-answer", {
         method:"POST", headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({ round, question, answer: corr[keyR][keyQ] })
