@@ -7,44 +7,27 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     :root{
-      /* === Farben zentral, hier anpassbar === */
-      --fg:#0f172a;            /* Text */
-      --muted:#64748b;         /* Sekundärtext */
-      --accent:#3b82f6;        /* Markenfarbe (Blau) */
-      --accent-2:#22c55e;      /* Grün */
-      --accent-3:#ef4444;      /* Rot */
-      --bg-from:#ffffff;
-      --bg-to:#f6f8fb;
-      --card:#ffffff;
-      --ring: rgba(59,130,246,.18);
+      --fg:#0f172a; --muted:#64748b; --accent:#3b82f6;
+      --accent-2:#22c55e; --accent-3:#ef4444;
+      --bg-from:#ffffff; --bg-to:#f6f8fb; --card:#ffffff;
+      --ring: rgba(59,130,246,.18); --border:#e5e7eb;
+      --btn-grad-from:#22c55e; --btn-grad-to:#16a34a; --btn-grad-hover:#0f9a40;
       --shadow: 0 6px 20px rgba(2,6,23,.08);
-      --border:#e5e7eb;
-      --btn-grad-from:#22c55e; /* Submit-Button Verlauf */
-      --btn-grad-to:#16a34a;
-      --btn-grad-hover:#0f9a40;
     }
 
-    /* Grundlayout */
     html,body{height:100%}
     body{
-      margin:0; padding:0;
-      font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin:0; padding:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color:var(--fg);
       background: linear-gradient(180deg, var(--bg-from), var(--bg-to));
       min-height:100dvh; display:flex; align-items:flex-start; justify-content:center;
     }
-    .wrap{ width:min(980px, 92vw); margin:56px auto 40px; text-align:center; }
+    .wrap{ width:min(560px, 94vw); margin:56px auto 40px; text-align:center; }
 
-    /* Header / Logo */
-    header img{ max-height:72px; margin-bottom:12px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.08)); }
+    header img{ max-height:64px; margin-bottom:10px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.08)); }
+    h1{ font-size:clamp(1.6rem, 1.2rem + 2vw, 2.4rem); margin:.2rem 0 .4rem; }
+    .sub{ color:var(--muted); margin:.2rem 0 1rem; font-size:1.02rem; }
 
-    /* Titel & Badge */
-    h1{
-      font-size:clamp(1.6rem, 1.2rem + 2vw, 2.6rem);
-      margin:.2rem 0 .6rem;
-      letter-spacing:.2px;
-    }
-    .sub{ color:var(--muted); margin:.2rem 0 1.2rem; font-size:1.05rem; }
     .badge{
       display:inline-flex; align-items:center; gap:.5rem;
       padding:.35rem .7rem; border-radius:999px; font-weight:600; font-size:.95rem;
@@ -56,54 +39,48 @@
     .open{ border-color:#bbf7d0; background:#f0fdf4; color:#14532d; }
     .closed{ border-color:#fecaca; background:#fef2f2; color:#7f1d1d; }
 
-    /* Karten / Blöcke */
+    .team-badge{
+      display:inline-block; margin:.35rem 0 .8rem; font-weight:700;
+      padding:.35rem .7rem; border-radius:10px; border:1px solid var(--border); background:#fff;
+    }
+
     .card{
       background:var(--card); border:1px solid var(--border); border-radius:16px;
-      padding:26px; box-shadow:var(--shadow);
+      padding:20px; box-shadow:var(--shadow);
     }
 
     /* Wartesection */
     .wait{ margin-top:10px; }
-    .wait h2{ font-size:clamp(1.3rem,1rem + 1.5vw,2rem); margin:.2rem 0 .5rem; }
+    .wait h2{ font-size:clamp(1.2rem,1rem + 1.2vw,1.8rem); margin:.2rem 0 .5rem; }
     .spin{
-      width:48px; height:48px; border-radius:999px; margin:10px auto 8px;
+      width:44px; height:44px; border-radius:999px; margin:10px auto 8px;
       border:4px solid #e5e7eb; border-top-color:var(--accent);
       animation:spin 1s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Formular / Grid */
-    form { margin-top:14px; }
-    .grid{
-      display:grid; gap:12px; justify-content:center;
-      grid-template-columns: repeat(6, minmax(64px, 1fr));
+    /* Liste (untereinander) */
+    form{ margin-top:8px; }
+    .list{ display:flex; flex-direction:column; gap:10px; }
+    .row{
+      text-align:left; background:#fff; border:1px solid var(--border); border-radius:12px;
+      padding:10px 12px; box-shadow:0 3px 10px rgba(2,6,23,.05);
     }
-    @media (max-width: 920px){ .grid{ grid-template-columns: repeat(4, minmax(70px, 1fr)); } }
-    @media (max-width: 560px){ .grid{ grid-template-columns: repeat(3, minmax(78px, 1fr)); } }
+    .row label{ display:block; font-size:.95rem; color:#334155; font-weight:600; margin-bottom:6px; }
+    .row input{
+      width:100%; padding:12px 10px; font-size:1.06rem; border:1px solid #d1d5db; border-radius:10px;
+      outline:none; transition: box-shadow .15s, border-color .15s; background:#fdfdfd;
+    }
+    .row input:focus{ border-color:var(--accent); box-shadow:0 0 0 4px var(--ring); background:#fff; }
 
-    .cell{
-      background:#fff; border:1px solid var(--border); border-radius:12px; padding:8px 10px;
-      display:flex; flex-direction:column; align-items:center; gap:6px;
-      box-shadow:0 3px 10px rgba(2,6,23,.05);
-    }
-    .cell label{ font-size:.9rem; color:#334155; font-weight:600; }
-    .cell input{
-      width:100%; padding:10px 8px; text-align:center; font-size:1.06rem;
-      border:1px solid #d1d5db; border-radius:10px; outline:none; transition: box-shadow .15s, border-color .15s;
-      background:#fdfdfd;
-    }
-    .cell input:focus{ border-color:var(--accent); box-shadow:0 0 0 4px var(--ring); background:#fff; }
-
-    /* Submit */
     button[type="submit"]{
-      padding:14px 26px; font-size:1.05rem; margin-top:18px; font-weight:700;
+      width:100%; padding:14px 22px; font-size:1.05rem; margin-top:14px; font-weight:700;
       background:linear-gradient(135deg, var(--btn-grad-from), var(--btn-grad-to));
       color:#fff; border:none; border-radius:14px; cursor:pointer; box-shadow:0 10px 24px rgba(34,197,94,.25);
     }
     button[type="submit"]:hover{ filter:saturate(1.05); background:var(--btn-grad-hover); }
 
-    /* Status */
-    .status{ margin-top:14px; font-weight:700; }
+    .status{ margin-top:12px; font-weight:700; }
     .abgegeben{ color:var(--accent-2); }
     .gesperrt{ color:var(--accent-3); }
   </style>
@@ -115,6 +92,7 @@
     </header>
 
     <h1>Antwort-Eingabe</h1>
+    <div class="team-badge" id="teamBadge">Team: –</div>
     <p class="sub">
       <span id="rundeBadge" class="badge closed">
         <span class="dot"></span>
@@ -131,7 +109,7 @@
 
     <!-- Formular -->
     <form id="antwortForm" onsubmit="submitAnswers(event)" style="display:none">
-      <div id="eingaben" class="grid"></div>
+      <div id="eingaben" class="list"></div>
       <button type="submit">Antworten abgeben</button>
     </form>
 
@@ -141,6 +119,7 @@
   <script>
     const teamName = localStorage.getItem("teamName");
     if (!teamName) { window.location.href = "start.html"; }
+    document.getElementById("teamBadge").textContent = "Team: " + teamName;
 
     let inputsBuilt = false;
 
@@ -156,7 +135,6 @@
         const aktuelleRunde = parseInt(data.round);
         const closed = !!data.closed;
 
-        // Runde 7 -> Schlussbildschirm
         if (aktuelleRunde >= 7) { window.location.href = "finished.html"; return; }
 
         updateBadge(aktuelleRunde, closed);
@@ -182,9 +160,7 @@
       badge.classList.add(closed ? "closed" : "open");
       setBadgeText(`Runde ${runde} – ${closed ? "geschlossen" : "offen"}`);
     }
-    function setBadgeText(text){
-      document.getElementById("rundeInfoText").textContent = text;
-    }
+    function setBadgeText(text){ document.getElementById("rundeInfoText").textContent = text; }
 
     function showWait(visible, runde){
       const sec = document.getElementById("waitSection");
@@ -203,13 +179,13 @@
       const eingabenDiv = document.getElementById("eingaben");
       eingabenDiv.innerHTML = "";
       for (let i = 0; i < 12; i++) {
-        const cell = document.createElement("div");
-        cell.className = "cell";
-        cell.innerHTML = `
-          <label for="a${i+1}">${i+1}.</label>
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `
+          <label for="a${i+1}">Frage ${i+1}</label>
           <input id="a${i+1}" name="a${i+1}" autocomplete="off" required />
         `;
-        eingabenDiv.appendChild(cell);
+        eingabenDiv.appendChild(row);
       }
       inputsBuilt = true;
       showForm();
