@@ -19,13 +19,16 @@
     .btn.danger{background:var(--danger); color:#fff}
     select{padding:.5rem .7rem; border:1px solid #ccc; border-radius:8px}
 
-    #qrButton{
+    #qrButton, #leaderButton{
       position:fixed; top:10px; right:10px;
       background:#008000; color:#fff; border:none; padding:.6rem 1.2rem;
-      border-radius:8px; cursor:pointer; font-weight:bold;
-      box-shadow:0 2px 6px rgba(0,0,0,.2)
+      border-radius:8px; cursor:pointer; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,.2)
     }
+    #qrButton{ right:10px; }
+    #leaderButton{ right:132px; background:#005bbb; }
     #qrButton:hover{background:#006400}
+    #leaderButton:hover{background:#0047a3}
+
     #teamCounter{
       position:fixed; top:56px; right:10px; z-index:2;
       font-weight:bold; background:#f0f0f0; padding:.3rem .6rem;
@@ -49,6 +52,9 @@
 </head>
 <body>
   <h1>Admin Panel</h1>
+
+  <!-- neue Buttons oben rechts -->
+  <button id="leaderButton" onclick="window.open('leaderboard.html','_blank')">Auswertung starten</button>
   <button id="qrButton" onclick="window.open('qr.html','_blank')">QR-Code</button>
   <div id="teamCounter">Teams: 0</div>
 
@@ -93,7 +99,7 @@
     const b64enc = (str) => btoa(unescape(encodeURIComponent(str)));
     const b64dec = (b64) => decodeURIComponent(escape(atob(b64)));
 
-    /* ---- Fetch Helper mit Cache-Buster & Fehlerwurf ---- */
+    /* ---- Fetch Helper ---- */
     async function getJSON(url){
       const res = await fetch(url + (url.includes('?')?'&':'?') + '_=' + Date.now());
       if(!res.ok) throw new Error(url + ' -> ' + res.status);
@@ -109,7 +115,6 @@
       return res;
     }
 
-    /* ---- Helpers ---- */
     const normalizeCorrect = (val) => {
       if (Array.isArray(val)) return val.map(v => String(v).trim()).filter(Boolean);
       if (typeof val === "string") return val.split(/[;,|]/g).map(s => s.trim()).filter(Boolean);
@@ -117,7 +122,6 @@
     };
     const escapeAttr = (v) => String(v).replace(/"/g, "&quot;");
 
-    /* ---- Round control ---- */
     async function fetchRound() {
       const data = await getJSON("/current-round");
       state.round = +data.round || 0; state.closed = !!data.closed;
@@ -145,7 +149,6 @@
       alert("Zurückgesetzt.");
     }
 
-    /* ---- Scores & Teams ---- */
     async function loadScores() {
       const scores = await getJSON("/scores");
       const teams  = await getJSON("/teams");
@@ -169,7 +172,6 @@
       teams.forEach(t => { const li=document.createElement("li"); li.textContent=t; ul.appendChild(li); });
     }
 
-    /* ---- Korrekte Antworten lesen (Array+Objekt kompatibel) ---- */
     function getCorrectListForQuestion(corrRound, qIndex) {
       if (!corrRound) return [];
       const objVal = corrRound[`question_${qIndex}`];
@@ -178,7 +180,6 @@
       return normalizeCorrect(arrVal);
     }
 
-    /* ---- Auswertung mit Click-to-Correct (Base64-sicher) ---- */
     async function loadEvaluation() {
       await fetchRound();
       const r = state.round, target = document.getElementById("auswertung");
@@ -220,7 +221,6 @@
       html += "</table>";
       target.innerHTML = html;
 
-      // Click-to-correct (Base64 decode) + Fehlerfeedback
       target.querySelectorAll("td.no").forEach(td=>{
         td.addEventListener("click", async ()=>{
           try{
@@ -232,7 +232,6 @@
             await addVariantToCorrect(rr, q, ua);
             await loadEvaluation();
             await loadScores();
-            // optional: kurzes visuelles Feedback
           }catch(err){
             alert("Konnte nicht speichern: " + err.message);
             console.error(err);
@@ -240,7 +239,6 @@
         });
       });
 
-      // Scores mergen & speichern
       for (const team in punkteMap) {
         if (!scoresData[team]) scoresData[team] = {};
         scoresData[team][`Runde ${r}`] = punkteMap[team];
@@ -249,7 +247,6 @@
     }
 
     async function addVariantToCorrect(round, question, newVar) {
-      // aktuelle Liste holen
       const corr = await getJSON("/correct-answers");
       const keyR = `round_${round}`, keyQ = `question_${question}`;
       let prev = corr[keyR] || {};
@@ -258,12 +255,9 @@
 
       if (!list.some(v => v.toLowerCase().trim() === newVar.toLowerCase().trim())) list.push(newVar);
       const joined = list.join(", ");
-
-      // Speichern + Fehler prüfen
       await postJSON("/update-correct-answer", { round, question, answer: joined });
     }
 
-    /* ---- Richtige Antworten Grid ---- */
     async function loadAnswersGrid() {
       const data = await getJSON("/correct-answers");
       let html = `<table><thead><tr><th style="width:120px">Runde</th><th style="width:120px">Frage</th><th>Richtige Antwort(en)</th></tr></thead><tbody>`;
