@@ -7,86 +7,123 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     :root{
-      --fg:#111; --muted:#666; --ok:#198754; --btn:#00a86b; --btn-hover:#007a4d;
-      --card:#ffffff; --bg-from:#ffffff; --bg-to:#f0f0f0;
-      --accent:#0080ff;
+      /* === Farben zentral, hier anpassbar === */
+      --fg:#0f172a;            /* Text */
+      --muted:#64748b;         /* Sekundärtext */
+      --accent:#3b82f6;        /* Markenfarbe (Blau) */
+      --accent-2:#22c55e;      /* Grün */
+      --accent-3:#ef4444;      /* Rot */
+      --bg-from:#ffffff;
+      --bg-to:#f6f8fb;
+      --card:#ffffff;
+      --ring: rgba(59,130,246,.18);
+      --shadow: 0 6px 20px rgba(2,6,23,.08);
+      --border:#e5e7eb;
+      --btn-grad-from:#22c55e; /* Submit-Button Verlauf */
+      --btn-grad-to:#16a34a;
+      --btn-grad-hover:#0f9a40;
     }
+
+    /* Grundlayout */
+    html,body{height:100%}
     body{
-      margin:0; padding:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin:0; padding:0;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color:var(--fg);
-      background:linear-gradient(to bottom,var(--bg-from),var(--bg-to));
+      background: linear-gradient(180deg, var(--bg-from), var(--bg-to));
       min-height:100dvh; display:flex; align-items:flex-start; justify-content:center;
     }
     .wrap{ width:min(980px, 92vw); margin:56px auto 40px; text-align:center; }
-    header img{ max-height:72px; margin-bottom:12px; }
-    h1{ font-size:clamp(1.6rem, 1.4rem + 1.5vw, 2.6rem); margin:.2rem 0 .4rem; }
-    .sub{ color:var(--muted); margin:.4rem 0 1.2rem; font-size:1.1rem; }
 
-    /* Status / Warten */
-    .wait{
-      background:var(--card); border:1px solid #e5e5e5; border-radius:14px;
-      padding:28px; margin-top:8px; box-shadow:0 6px 18px rgba(0,0,0,.06);
+    /* Header / Logo */
+    header img{ max-height:72px; margin-bottom:12px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.08)); }
+
+    /* Titel & Badge */
+    h1{
+      font-size:clamp(1.6rem, 1.2rem + 2vw, 2.6rem);
+      margin:.2rem 0 .6rem;
+      letter-spacing:.2px;
     }
-    .wait h2{ font-size:clamp(1.4rem,1.1rem + 1.3vw,2.2rem); margin:0 0 .6rem; }
-    .spin { width:44px; height:44px; border-radius:50%;
-      border:4px solid #ddd; border-top-color:var(--accent); margin:14px auto 6px;
+    .sub{ color:var(--muted); margin:.2rem 0 1.2rem; font-size:1.05rem; }
+    .badge{
+      display:inline-flex; align-items:center; gap:.5rem;
+      padding:.35rem .7rem; border-radius:999px; font-weight:600; font-size:.95rem;
+      border:1px solid var(--border); background:#f8fafc; color:#0f172a;
+    }
+    .dot{width:.55rem;height:.55rem;border-radius:50%;}
+    .open  .dot{ background:var(--accent-2); }
+    .closed .dot{ background:var(--accent-3); }
+    .open{ border-color:#bbf7d0; background:#f0fdf4; color:#14532d; }
+    .closed{ border-color:#fecaca; background:#fef2f2; color:#7f1d1d; }
+
+    /* Karten / Blöcke */
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:16px;
+      padding:26px; box-shadow:var(--shadow);
+    }
+
+    /* Wartesection */
+    .wait{ margin-top:10px; }
+    .wait h2{ font-size:clamp(1.3rem,1rem + 1.5vw,2rem); margin:.2rem 0 .5rem; }
+    .spin{
+      width:48px; height:48px; border-radius:999px; margin:10px auto 8px;
+      border:4px solid #e5e7eb; border-top-color:var(--accent);
       animation:spin 1s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Eingabe */
-    form { margin-top:10px; }
+    /* Formular / Grid */
+    form { margin-top:14px; }
     .grid{
-      display:grid; gap:10px; justify-content:center;
-      grid-template-columns: repeat(6, minmax(60px, 1fr));
+      display:grid; gap:12px; justify-content:center;
+      grid-template-columns: repeat(6, minmax(64px, 1fr));
     }
-    @media (max-width: 900px){
-      .grid{ grid-template-columns: repeat(4, minmax(64px, 1fr)); }
-    }
-    @media (max-width: 560px){
-      .grid{ grid-template-columns: repeat(3, minmax(68px, 1fr)); }
-    }
+    @media (max-width: 920px){ .grid{ grid-template-columns: repeat(4, minmax(70px, 1fr)); } }
+    @media (max-width: 560px){ .grid{ grid-template-columns: repeat(3, minmax(78px, 1fr)); } }
+
     .cell{
-      background:#fff; border:1px solid #e4e4e4; border-radius:10px; padding:6px 8px;
-      display:flex; flex-direction:column; align-items:center; gap:4px;
-      box-shadow:0 2px 8px rgba(0,0,0,.04);
+      background:#fff; border:1px solid var(--border); border-radius:12px; padding:8px 10px;
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+      box-shadow:0 3px 10px rgba(2,6,23,.05);
     }
-    .cell label{ font-size:.86rem; color:#444; }
+    .cell label{ font-size:.9rem; color:#334155; font-weight:600; }
     .cell input{
-      width:100%; padding:10px 8px; text-align:center; font-size:1.05rem;
-      border:1px solid #d0d0d0; border-radius:8px; outline:none;
+      width:100%; padding:10px 8px; text-align:center; font-size:1.06rem;
+      border:1px solid #d1d5db; border-radius:10px; outline:none; transition: box-shadow .15s, border-color .15s;
+      background:#fdfdfd;
     }
-    .cell input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,128,255,.12); }
+    .cell input:focus{ border-color:var(--accent); box-shadow:0 0 0 4px var(--ring); background:#fff; }
 
+    /* Submit */
     button[type="submit"]{
-      padding:14px 26px; font-size:1.1rem; margin-top:18px;
-      background:var(--btn); color:#fff; border:none; border-radius:12px; cursor:pointer;
-      box-shadow:0 6px 16px rgba(0,0,0,.08);
+      padding:14px 26px; font-size:1.05rem; margin-top:18px; font-weight:700;
+      background:linear-gradient(135deg, var(--btn-grad-from), var(--btn-grad-to));
+      color:#fff; border:none; border-radius:14px; cursor:pointer; box-shadow:0 10px 24px rgba(34,197,94,.25);
     }
-    button[type="submit"]:hover{ background:var(--btn-hover); }
-    .status{ margin-top:14px; font-weight:600; }
-    .abgegeben{ color:var(--ok); }
-    .gesperrt{ color:#b93a3a; }
+    button[type="submit"]:hover{ filter:saturate(1.05); background:var(--btn-grad-hover); }
 
-    /* kleiner Hinweis-Link */
-    .logout{
-      margin-top:18px; font-size:.9rem; color:var(--muted);
-    }
-    .logout a{ color:var(--muted); text-decoration:underline dotted; }
+    /* Status */
+    .status{ margin-top:14px; font-weight:700; }
+    .abgegeben{ color:var(--accent-2); }
+    .gesperrt{ color:var(--accent-3); }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <!-- Logo optional, falls vorhanden -->
       <img src="/logo.png" alt="Quiz-Logo" onerror="this.style.display='none'">
     </header>
 
     <h1>Antwort-Eingabe</h1>
-    <p class="sub" id="rundeInfo">Runde – wird geladen…</p>
+    <p class="sub">
+      <span id="rundeBadge" class="badge closed">
+        <span class="dot"></span>
+        <span id="rundeInfoText">Runde – lädt…</span>
+      </span>
+    </p>
 
     <!-- Wartesection -->
-    <section id="waitSection" class="wait" style="display:none">
+    <section id="waitSection" class="card wait" style="display:none">
       <div class="spin"></div>
       <h2 id="waitHeadline">Bitte warten, das Quiz startet gleich…</h2>
       <p class="sub" id="waitSub">Diese Runde ist noch geschlossen. Der Bildschirm aktualisiert sich automatisch.</p>
@@ -95,25 +132,22 @@
     <!-- Formular -->
     <form id="antwortForm" onsubmit="submitAnswers(event)" style="display:none">
       <div id="eingaben" class="grid"></div>
-      <button type="submit">Abgeben</button>
+      <button type="submit">Antworten abgeben</button>
     </form>
 
     <p id="status" class="status"></p>
-    <p class="logout"><a href="#" onclick="logout();return false;">Nicht dein Team? Abmelden</a></p>
   </div>
 
   <script>
     const teamName = localStorage.getItem("teamName");
     if (!teamName) { window.location.href = "start.html"; }
 
-    let lastState = { round: 0, closed: false };
+    let inputsBuilt = false;
 
-    document.addEventListener("DOMContentLoaded", init);
-
-    async function init() {
-      await refreshState();        // initial anzeigen
-      setInterval(refreshState, 4000); // auto-update
-    }
+    document.addEventListener("DOMContentLoaded", () => {
+      refreshState();
+      setInterval(refreshState, 4000); // Auto-Refresh
+    });
 
     async function refreshState(){
       try{
@@ -122,50 +156,48 @@
         const aktuelleRunde = parseInt(data.round);
         const closed = !!data.closed;
 
-        lastState = { round: aktuelleRunde, closed };
+        // Runde 7 -> Schlussbildschirm
+        if (aktuelleRunde >= 7) { window.location.href = "finished.html"; return; }
 
-        // Finale Seite ab Runde 7
-        if (aktuelleRunde >= 7) {
-          window.location.href = "finished.html";
-          return;
-        }
-
-        // UI: Kopfzeile
-        document.getElementById("rundeInfo").textContent =
-          `Runde ${aktuelleRunde} – ${closed ? "geschlossen" : "offen"}`;
+        updateBadge(aktuelleRunde, closed);
 
         if (aktuelleRunde < 1 || closed) {
-          // Wartemodus
-          showWait(true);
-          document.getElementById("waitHeadline").textContent =
-            aktuelleRunde < 1 ? "Bitte warten, das Quiz startet gleich…" : "Runde ist noch geschlossen…";
-          document.getElementById("waitSub").textContent =
-            "Sobald die Moderation startet, öffnet sich die Eingabe automatisch.";
+          showWait(true, aktuelleRunde);
           hideForm();
           return;
         }
 
-        // Eingabemodus
         showWait(false);
-        buildInputsOnce();       // einmalig Felder erzeugen
-        await checkAlreadySubmitted(aktuelleRunde); // evtl. sperren
+        buildInputsOnce();
+        await checkAlreadySubmitted(aktuelleRunde);
       }catch(e){
         console.error(e);
-        document.getElementById("rundeInfo").textContent = "Fehler beim Laden des Rundenstatus.";
+        setBadgeText("Rundenstatus: Fehler");
       }
     }
 
-    function showWait(visible){
-      document.getElementById("waitSection").style.display = visible ? "block" : "none";
+    function updateBadge(runde, closed){
+      const badge = document.getElementById("rundeBadge");
+      badge.classList.remove("open","closed");
+      badge.classList.add(closed ? "closed" : "open");
+      setBadgeText(`Runde ${runde} – ${closed ? "geschlossen" : "offen"}`);
     }
-    function hideForm(){
-      document.getElementById("antwortForm").style.display = "none";
-    }
-    function showForm(){
-      document.getElementById("antwortForm").style.display = "block";
+    function setBadgeText(text){
+      document.getElementById("rundeInfoText").textContent = text;
     }
 
-    let inputsBuilt = false;
+    function showWait(visible, runde){
+      const sec = document.getElementById("waitSection");
+      sec.style.display = visible ? "block" : "none";
+      if (!visible) return;
+      document.getElementById("waitHeadline").textContent =
+        (runde < 1) ? "Bitte warten, das Quiz startet gleich…" : "Runde ist noch geschlossen…";
+      document.getElementById("waitSub").textContent =
+        "Sobald die Moderation startet, öffnet sich die Eingabe automatisch.";
+    }
+    function hideForm(){ document.getElementById("antwortForm").style.display = "none"; }
+    function showForm(){ document.getElementById("antwortForm").style.display = "block"; }
+
     function buildInputsOnce(){
       if (inputsBuilt) { showForm(); return; }
       const eingabenDiv = document.getElementById("eingaben");
@@ -210,7 +242,7 @@
       const answers = [];
       for (let i = 1; i <= 12; i++) answers.push(formData.get(`a${i}`) || "");
 
-      // Neu laden des States, um Race-Conditions zu vermeiden
+      // State frisch holen (Rennbedingungen vermeiden)
       const res = await fetch("/current-round");
       const data = await res.json();
       const aktuelleRunde = parseInt(data.round);
@@ -238,7 +270,7 @@
           statusEl.textContent = "Runde beendet – nächste Runde in ein paar Minuten.";
           statusEl.className = "status gesperrt";
           form.style.display = "none";
-          showWait(true);
+          showWait(true, aktuelleRunde);
         } else {
           statusEl.textContent = "Fehler beim Absenden!";
           statusEl.className = "status";
@@ -246,11 +278,6 @@
       }catch(err){
         document.getElementById("status").textContent = "Serverfehler";
       }
-    }
-
-    function logout(){
-      localStorage.removeItem("teamName");
-      window.location.href = "start.html";
     }
   </script>
 </body>
