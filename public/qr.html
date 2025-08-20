@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>QR-Code</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <style>
+    html,body{height:100%; margin:0; font-family:Arial, sans-serif}
+    .wrap{height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px}
+    canvas{margin:8px}
+    h1{margin:0; font-size:2rem}
+    .link{font-size:1rem; color:#333}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Zum Quiz anmelden</h1>
+    <canvas id="qrcode"></canvas>
+    <div class="link" id="quizLink"></div>
+  </div>
+
+  <script>
+    const url = window.location.origin + "/start.html";
+    document.getElementById("quizLink").textContent = url;
+
+    const canvas = document.getElementById("qrcode");
+    QRCode.toCanvas(canvas, url, { width: 360 }, function (error) {
+      if (error) console.error(error);
+    });
+  </script>
+</body>
+</html>

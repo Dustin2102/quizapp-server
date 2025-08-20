@@ -8,41 +8,61 @@
     body {
       text-align: center;
       padding: 2rem;
-      font-family: sans-serif;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #ffffff, #f5f5f5);
     }
     h1 {
       margin-bottom: 1.5rem;
+      font-size: 2.5rem;
     }
     table {
       margin: 1rem auto;
       border-collapse: collapse;
-      font-size: 1.2rem;
+      font-size: 1.4rem;
+      min-width: 400px;
       display: none;
+      opacity: 0;
+      transition: opacity 1s;
     }
     th, td {
       border: 1px solid #999;
-      padding: 0.5rem 1rem;
+      padding: 0.5rem 1.2rem;
+      text-align: center;
     }
     th {
       background-color: #f0f0f0;
     }
     #singleResult {
-      font-size: 1.5rem;
+      font-size: 1.6rem;
       margin-top: 2rem;
+      min-height: 3rem;
     }
     button {
       padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      margin-top: 1rem;
+      font-size: 1.2rem;
+      margin: 0.5rem;
+      cursor: pointer;
+      background-color: #00a86b;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      transition: 0.2s;
     }
+    button:hover {
+      background-color: #007a4d;
+    }
+    /* Farben für Top 3 */
+    .gold { color: #d4af37; font-weight: bold; }
+    .silver { color: #c0c0c0; font-weight: bold; }
+    .bronze { color: #cd7f32; font-weight: bold; }
   </style>
 </head>
 <body>
   <h1>📊 Endergebnisse</h1>
 
   <div id="singleResult"></div>
-  <button id="nextBtn" onclick="zeigeNaechstes()">Nächster Platz</button>
-  <button onclick="zeigeAlle()">Alle anzeigen</button>
+  <button id="nextBtn" onclick="zeigeNaechstes()">▶️ Nächster Platz</button>
+  <button onclick="zeigeAlle()">📋 Alle anzeigen</button>
 
   <table id="resultsTable">
     <thead>
@@ -80,7 +100,8 @@
     function zeigeNaechstes() {
       if (index < teams.length) {
         const { team, punkte } = teams[index];
-        document.getElementById("singleResult").innerHTML = `<strong>Platz ${index + 1}:</strong> ${team} mit <strong>${punkte}</strong> Punkten`;
+        document.getElementById("singleResult").innerHTML =
+          `<strong>Platz ${index + 1}:</strong> ${team} mit <strong>${punkte}</strong> Punkten`;
         index++;
       } else {
         document.getElementById("singleResult").innerHTML = "🎉 Alle Plätze wurden angezeigt!";
@@ -89,14 +110,25 @@
     }
 
     function zeigeAlle() {
-      document.getElementById("resultsTable").style.display = "table";
-      const tbody = document.getElementById("resultsTable").querySelector("tbody");
+      const table = document.getElementById("resultsTable");
+      const tbody = table.querySelector("tbody");
       tbody.innerHTML = "";
+
       teams.forEach((t, i) => {
         const row = document.createElement("tr");
-        row.innerHTML = `<td>${i + 1}</td><td>${t.team}</td><td>${t.punkte}</td>`;
+        let klasse = "";
+        if (i === 0) klasse = "gold";
+        else if (i === 1) klasse = "silver";
+        else if (i === 2) klasse = "bronze";
+
+        row.innerHTML = `<td class="${klasse}">${i + 1}</td>
+                         <td class="${klasse}">${t.team}</td>
+                         <td class="${klasse}">${t.punkte}</td>`;
         tbody.appendChild(row);
       });
+
+      table.style.display = "table";
+      setTimeout(() => { table.style.opacity = 1; }, 50); // Fade-In
     }
   </script>
 </body>

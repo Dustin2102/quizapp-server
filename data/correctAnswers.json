@@ -8,18 +8,15 @@
     ]
   ],
   "round_1": {
+    "0": "",
     "question_1": [
       "Berlin"
     ],
-    "question_2": [
-      "41"
-    ],
+    "question_2": "41, 42",
     "question_3": [
       "x"
     ],
-    "question_4": [
-      "x"
-    ],
+    "question_4": "66, 77",
     "question_5": [
       "x"
     ],

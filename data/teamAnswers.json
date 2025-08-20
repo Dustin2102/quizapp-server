@@ -7,5 +7,41 @@
       ],
       "timestamp": "2025-07-25T09:17:49.246Z"
     }
+  },
+  "round_0": {
+    "Team 1": {
+      "answers": [
+        "x",
+        "c",
+        "f",
+        "e",
+        "q",
+        "we",
+        "e",
+        "e",
+        "we",
+        "e",
+        "q",
+        "e"
+      ],
+      "timestamp": 1755681585896
+    },
+    "dhs": {
+      "answers": [
+        "ssh",
+        "sh",
+        "ts",
+        "sh",
+        "hs",
+        "sh",
+        "stz",
+        "hhh",
+        "swt6z",
+        "trsw",
+        "swswzh",
+        "rth"
+      ],
+      "timestamp": 1755682111379
+    }
   }
 }

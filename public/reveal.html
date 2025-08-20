@@ -7,31 +7,55 @@
   <style>
     body {
       text-align: center;
-      padding: 3rem;
-      font-family: sans-serif;
+      padding: 4rem;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #ffffff, #f5f5f5);
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 2rem;
     }
     #platz {
-      font-size: 2.5rem;
+      font-size: 3rem;
       margin-bottom: 1rem;
+      opacity: 0;
+      transition: opacity 1s;
     }
     #team {
-      font-size: 3rem;
+      font-size: 4rem;
       font-weight: bold;
+      opacity: 0;
+      transition: opacity 1s;
     }
     #punkte {
-      font-size: 2rem;
+      font-size: 2.5rem;
       color: #333;
       margin-top: 1rem;
+      opacity: 0;
+      transition: opacity 1s;
     }
     button {
-      font-size: 1.2rem;
+      font-size: 1.4rem;
       padding: 0.6rem 2rem;
-      margin-top: 2rem;
+      margin-top: 3rem;
+      cursor: pointer;
+      background-color: #00a86b;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      transition: 0.2s;
     }
+    button:hover {
+      background-color: #007a4d;
+    }
+    /* Farben für Top 3 */
+    .gold { color: #d4af37; }
+    .silver { color: #c0c0c0; }
+    .bronze { color: #cd7f32; }
   </style>
 </head>
 <body>
-  <h1>🎉 Platzierungen nacheinander anzeigen</h1>
+  <h1>🎉 Platzierungen nacheinander 🎉</h1>
   <div id="platz"></div>
   <div id="team"></div>
   <div id="punkte"></div>
@@ -57,18 +81,50 @@
       });
 
     function zeigeNaechstenPlatz() {
+      const platzEl = document.getElementById("platz");
+      const teamEl = document.getElementById("team");
+      const punkteEl = document.getElementById("punkte");
+
       if (aktuellerIndex >= teams.length) {
-        document.getElementById("platz").textContent = "🎊 Alle Platzierungen gezeigt!";
-        document.getElementById("team").textContent = "";
-        document.getElementById("punkte").textContent = "";
+        platzEl.textContent = "🎊 Alle Platzierungen gezeigt!";
+        teamEl.textContent = "";
+        punkteEl.textContent = "";
         return;
       }
 
       const platz = aktuellerIndex + 1;
       const eintrag = teams[aktuellerIndex];
-      document.getElementById("platz").textContent = `Platz ${platz}`;
-      document.getElementById("team").textContent = eintrag.team;
-      document.getElementById("punkte").textContent = `${eintrag.punkte} Punkte`;
+
+      // Reset Animation
+      platzEl.style.opacity = 0;
+      teamEl.style.opacity = 0;
+      punkteEl.style.opacity = 0;
+
+      // Timeout, um Animation zu triggern
+      setTimeout(() => {
+        platzEl.textContent = `Platz ${platz}`;
+        teamEl.textContent = eintrag.team;
+        punkteEl.textContent = `${eintrag.punkte} Punkte`;
+
+        // Farben für Top 3
+        platzEl.className = "";
+        teamEl.className = "";
+        if (platz === 1) {
+          platzEl.classList.add("gold");
+          teamEl.classList.add("gold");
+        } else if (platz === 2) {
+          platzEl.classList.add("silver");
+          teamEl.classList.add("silver");
+        } else if (platz === 3) {
+          platzEl.classList.add("bronze");
+          teamEl.classList.add("bronze");
+        }
+
+        // Fade-In starten
+        platzEl.style.opacity = 1;
+        teamEl.style.opacity = 1;
+        punkteEl.style.opacity = 1;
+      }, 200);
 
       aktuellerIndex++;
     }

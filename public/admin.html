@@ -2,170 +2,314 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin – Auswertung</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Admin Panel</title>
+  <style>
+    :root{
+      --ok:#c8f7c5;
+      --no:#f8d7da;
+      --line:#bbb;
+      --muted:#666;
+      --accent:#00a86b;
+      --blue:#007bff;
+      --warn:#ff9800;
+      --danger:#dc3545;
+    }
+    *{box-sizing:border-box}
+    body{font-family: Arial, sans-serif; margin:20px}
+    h1{margin:0 0 10px}
+    h2{margin:24px 0 8px}
+    button{margin:4px; padding:.6rem 1.0rem; cursor:pointer; border:none; border-radius:8px}
+    .btn{background:#e9ecef}
+    .btn.primary{background:var(--accent); color:#fff}
+    .btn.blue{background:var(--blue); color:#fff}
+    .btn.warn{background:var(--warn); color:#fff}
+    .btn.danger{background:var(--danger); color:#fff}
+
+    #qrButton{
+      position:fixed; top:10px; right:10px;
+      background:#008000; color:#fff; border:none; padding:.6rem 1.2rem;
+      border-radius:8px; cursor:pointer; font-weight:bold;
+      box-shadow:0 2px 6px rgba(0,0,0,.2)
+    }
+    #qrButton:hover{background:#006400}
+
+    table{border-collapse:collapse; margin:12px 0; width:100%; max-width:1200px}
+    th,td{border:1px solid var(--line); padding:8px; text-align:center}
+    th{background:#f0f0f0; position:sticky; top:0}
+
+    .ok{background:var(--ok)}
+    .no{background:var(--no); cursor:pointer}
+    .hint{font-size:.92rem; color:var(--muted); margin:6px 0 10px}
+
+    /* Richtige Antworten – Rundengliederung */
+    .round-header td{
+      background:#eef7ff; font-weight:bold; text-align:left; border-top:3px solid #89bfff;
+    }
+    .answers-input{width:100%; max-width:520px; padding:.4rem; border:1px solid #ccc; border-radius:6px; text-align:left}
+
+    /* kleine Helfer */
+    .muted{color:var(--muted)}
+    .flex{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap}
+    .spacer{flex:1}
+  </style>
 </head>
 <body>
-  <h1>Admin – Runden-Auswertung</h1>
+  <h1>Admin Panel</h1>
+  <!-- QR-Code Button (neuer Tab für Beamer) -->
+  <button id="qrButton" onclick="window.open('qr.html','_blank')">QR-Code</button>
 
-  <label for="runde">Runde auswählen:</label>
-  <select id="runde">
-    <option value="1">Runde 1</option>
-    <option value="2">Runde 2</option>
-    <option value="3">Runde 3</option>
-    <option value="4">Runde 4</option>
-    <option value="5">Runde 5</option>
-    <option value="6">Runde 6</option>
-  </select>
-  <button onclick="loadAnswers()">Antworten laden</button>
-
-  <div id="antwortTabelle"></div>
-
-  <h2>Korrekte Antworten eingeben</h2>
-  <form id="correctAnswersForm" onsubmit="saveCorrectAnswers(event)">
-    <div id="correctInputs"></div>
-    <button type="submit">Korrekte Antworten speichern</button>
-  </form>
-
-  <!-- 📊 Button zum Anzeigen der Ergebnisse -->
-  <div style="text-align: center; margin-top: 3rem;">
-    <button onclick="window.location.href='results.html'" style="font-size: 1.2rem;">
-      📊 Ergebnisse anzeigen
-    </button>
+  <!-- Rundensteuerung -->
+  <h2>Rundensteuerung</h2>
+  <div class="flex">
+    <div>Aktuelle Runde: <strong id="aktuelleRunde">0</strong> <span id="rundenStatus" class="muted"></span></div>
+    <div class="spacer"></div>
+    <button class="btn" onclick="rundeZurueck()">◀ Runde zurück</button>
+    <button class="btn blue" onclick="rundeStarten()">▶ Runde starten</button>
+    <button class="btn warn" onclick="rundeSchliessen()">■ Runde schließen</button>
+    <button class="btn" onclick="rundeWeiter()">Runde weiter ▶</button>
+    <button class="btn danger" onclick="quizBeenden()">🏁 Quiz beenden</button>
   </div>
 
+  <!-- Punktetabelle -->
+  <h2>Punktetabelle (Gesamt)</h2>
+  <div id="punkteTabelle"></div>
+
+  <!-- Auswertung -->
+  <h2>Auswertung (aktuelle Runde)</h2>
+  <p class="hint">Tipp: Auf eine <strong>rote Zelle</strong> klicken, um diese Schreibweise als <em>korrekt</em> zu übernehmen – die Tabelle rechnet sofort neu.</p>
+  <div id="auswertung"></div>
+
+  <!-- Richtige Antworten -->
+  <h2>Richtige Antworten – Übersicht & Bearbeitung</h2>
+  <p class="hint">Mehrere Varianten pro Frage mit <code>,</code> / <code>;</code> / <code>|</code> trennen (z. B. <em>Berlin; Bärlin | Hauptstadt</em>).</p>
+  <div id="answersGrid"></div>
+
+  <!-- Teams -->
+  <h2>Teams</h2>
+  <p>Angemeldet: <strong id="teamCount">0</strong></p>
+  <ul id="teamList"></ul>
+
   <script>
-    const allScores = {};
+    let aktuelleRunde = 0;
 
-    async function loadAnswers() {
-      const round = document.getElementById("runde").value;
-      const res = await fetch("/data/teamAnswers.json");
-      const teamData = await res.json();
+    /* ---------- Hilfsfunktionen ---------- */
+    function normalizeCorrect(val){
+      if(Array.isArray(val)) return val.map(v=>String(v).trim()).filter(Boolean);
+      if(typeof val==='string') return val.split(/[;,|]/g).map(s=>s.trim()).filter(Boolean);
+      return [];
+    }
+    function escapeAttr(v){ return String(v).replace(/"/g,'&quot;'); }
 
-      const correctRes = await fetch("/correct-answers");
-      const correctAnswers = await correctRes.json();
+    /* ---------- Runde laden/setzen ---------- */
+    async function ladeRunde(){
+      const res = await fetch("/current-round"); const data = await res.json();
+      aktuelleRunde = parseInt(data.round||0);
+      document.getElementById("aktuelleRunde").textContent = aktuelleRunde;
+      document.getElementById("rundenStatus").textContent = data.closed ? "(geschlossen)" : "(offen)";
+    }
+    async function setzeRunde(round, closed){
+      await fetch("/current-round",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ round, closed: !!closed })
+      });
+      await ladeRunde();
+      await ladeAllesLeicht();
+    }
+    function rundeWeiter(){ setzeRunde(aktuelleRunde+1, false); }
+    function rundeZurueck(){ setzeRunde(Math.max(0,aktuelleRunde-1), false); }
+    function rundeStarten(){ setzeRunde(aktuelleRunde===0?1:aktuelleRunde, false); }
+    function rundeSchliessen(){ setzeRunde(aktuelleRunde, true); }
+    function quizBeenden(){
+      if(confirm("Quiz wirklich beenden? Teams sehen dann den Endbildschirm.")){
+        setzeRunde(7, true); // >=7 => finished
+      }
+    }
 
-      const answers = teamData["round_" + round] || {};
-      const correct = correctAnswers["round_" + round] || {};
+    /* ---------- Punktetabelle (Gesamt) ---------- */
+    async function ladePunkte(){
+      const res = await fetch("/scores"); const scores = await res.json();
+      const resTeams = await fetch("/teams"); const teams = await resTeams.json();
 
-      const table = document.createElement("table");
-      table.innerHTML = "<tr><th>Team</th>" +
-        Array.from({ length: 12 }, (_, i) => `<th>Frage ${i + 1}</th>`).join('') +
-        "<th>Zeit</th></tr>";
+      // Summiere ggf. Objekt {"Runde 1":x,...} zu Gesamtpunkten
+      function totalFor(team){
+        const entry = scores[team];
+        if(typeof entry === 'number') return entry;
+        if(entry && typeof entry === 'object'){
+          return Object.values(entry).reduce((a,b)=>a+(parseInt(b)||0),0);
+        }
+        return 0;
+      }
 
+      // Sortiert nach Gesamt absteigend
+      const rows = teams.map(t=>({team:t, sum: totalFor(t)}))
+                        .sort((a,b)=>b.sum-a.sum);
+
+      let html = "<table><tr><th>Platz</th><th>Team</th><th>Punkte</th></tr>";
+      rows.forEach((r,i)=>{ html += `<tr><td>${i+1}</td><td>${r.team}</td><td>${r.sum}</td></tr>`; });
+      html += "</table>";
+      document.getElementById("punkteTabelle").innerHTML = html;
+    }
+
+    /* ---------- Auswertung aktuelle Runde ---------- */
+    async function ladeAuswertung(){
+      await ladeRunde();
+      const r = aktuelleRunde;
+      const target = document.getElementById("auswertung");
+      if(r<1 || r>6){ target.innerHTML = "<p class='muted'>Keine Auswertung verfügbar.</p>"; return; }
+
+      const [ansRes, corrRes, scoresRes] = await Promise.all([
+        fetch("/data/teamAnswers.json"),
+        fetch("/correct-answers"),
+        fetch("/scores")
+      ]);
+      const ansData = await ansRes.json();
+      const corrData = await corrRes.json();
+      const scoresData = await scoresRes.json();
+
+      const rAnswers = ansData[`round_${r}`] || {};
+      const corrRaw  = corrData[`round_${r}`] || {};
+      const corrMap = {};
+      for(let i=1;i<=12;i++){ corrMap[i] = normalizeCorrect(corrRaw[`question_${i}`]); }
+
+      // Tabelle
+      let html = `<table><tr><th>Team</th>${Array.from({length:12},(_,i)=>`<th>${i+1}</th>`).join('')}<th>Zeit</th></tr>`;
       const punkteMap = {};
 
-      for (const team in answers) {
-        const tr = document.createElement("tr");
-        const a = answers[team].answers;
-        const ts = new Date(answers[team].timestamp).toLocaleString("de-DE");
+      for(const team in rAnswers){
+        const entry = rAnswers[team];
+        const a = entry.answers || [];
+        const ts = new Date(entry.timestamp).toLocaleString("de-DE");
+        let punkte=0, row=`<td>${team}</td>`;
 
-        let row = `<td>${team}</td>`;
-        let punkte = 0;
+        for(let i=0;i<12;i++){
+          const ua = (a[i]||"").toString();
+          const isOk = corrMap[i+1].some(c=>c.toLowerCase()===ua.toLowerCase().trim());
+          if(isOk) punkte++;
 
-        for (let i = 0; i < 12; i++) {
-          const userAnswer = a[i] || "";
-          const corr = correct[`question_${i + 1}`] || [];
-          const isCorrect = corr.some(c => c.toLowerCase().trim() === userAnswer.toLowerCase().trim());
-
-          if (isCorrect) punkte++;
-
-          row += `<td style="background-color:${isCorrect ? '#c8f7c5' : '#f8d7da'};">${userAnswer}<br>${isCorrect ? '✅' : '❌'}</td>`;
+          row += `<td class="${isOk?'ok':'no'}"
+                        data-round="${r}"
+                        data-q="${i+1}"
+                        data-user="${escapeAttr(ua)}"
+                        title="${isOk?'':'Klicken, um diese Schreibweise als korrekt zu übernehmen'}">
+                    ${ua || "&nbsp;"}<br>${isOk?'✅':'❌'}
+                  </td>`;
         }
-
         row += `<td>${ts}</td>`;
-        tr.innerHTML = row;
-        table.appendChild(tr);
-
-        punkteMap[team] = punkte;
-
-        if (!allScores[team]) allScores[team] = {};
-        allScores[team]["Runde " + round] = punkte;
+        html += `<tr>${row}</tr>`;
+        punkteMap[team]=punkte;
       }
+      html += "</table>";
+      target.innerHTML = html;
 
-      const outputDiv = document.getElementById("antwortTabelle");
-      outputDiv.innerHTML = "";
-      outputDiv.appendChild(table);
-
-      const punkteDiv = document.createElement("div");
-      punkteDiv.innerHTML = "<h2>Punkteübersicht dieser Runde</h2>";
-      const sortedTeams = Object.keys(punkteMap).sort((a, b) => punkteMap[b] - punkteMap[a]);
-      const ul = document.createElement("ul");
-      sortedTeams.forEach(team => {
-        const li = document.createElement("li");
-        li.textContent = `${team}: ${punkteMap[team]} Punkte`;
-        ul.appendChild(li);
-      });
-      punkteDiv.appendChild(ul);
-      outputDiv.appendChild(punkteDiv);
-
-      const alleRunden = [...new Set(Object.values(allScores).flatMap(obj => Object.keys(obj)))].sort();
-      const gesamtDiv = document.createElement("div");
-      gesamtDiv.innerHTML = "<h2>Gesamtranking</h2>";
-
-      const rankingTable = document.createElement("table");
-      let header = "<tr><th>Team</th>";
-      alleRunden.forEach(r => header += `<th>${r}</th>`);
-      header += "<th>Gesamt</th></tr>";
-      rankingTable.innerHTML = header;
-
-      Object.entries(allScores).forEach(([team, punkteObj]) => {
-        let zeile = `<tr><td>${team}</td>`;
-        let summe = 0;
-        alleRunden.forEach(runde => {
-          const pkt = punkteObj[runde] || 0;
-          summe += pkt;
-          zeile += `<td>${pkt}</td>`;
+      // Klick-Handler (rote Zellen -> Variante hinzufügen)
+      target.querySelectorAll("td.no").forEach(td=>{
+        td.addEventListener("click", async ()=>{
+          const rr = td.dataset.round, q = td.dataset.q, ua = (td.dataset.user||"").trim();
+          if(!ua) return;
+          const ok = confirm(`„${ua}“ als KORREKT für Runde ${rr}, Frage ${q} übernehmen?`);
+          if(!ok) return;
+          await addVariantToCorrect(rr,q,ua);
+          await ladeAuswertung(); // neu berechnen
+          await ladePunkte();     // Ranking aktualisieren
         });
-        zeile += `<td><strong>${summe}</strong></td></tr>`;
-        rankingTable.innerHTML += zeile;
       });
 
-      gesamtDiv.appendChild(rankingTable);
-      outputDiv.appendChild(gesamtDiv);
-
-      // Score-Datei speichern
-      await fetch("/save-scores", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(allScores),
-      });
-
-      // Korrekte Antworten vorbefüllen
-      const inputDiv = document.getElementById("correctInputs");
-      inputDiv.innerHTML = "";
-      for (let i = 0; i < 12; i++) {
-        const val = (correct[`question_${i + 1}`] || [])[0] || "";
-        inputDiv.innerHTML += `<input name="q${i + 1}" placeholder="Frage ${i + 1}" value="${val}" />`;
-        if ((i + 1) % 5 === 0) inputDiv.innerHTML += "<br>";
+      // Scores zusammenführen & speichern (nur aktuelle Runde überschreiben)
+      // bestehend lesen, dann Runde r setzen
+      for(const team in punkteMap){
+        if(!scoresData[team]) scoresData[team]={};
+        scoresData[team][`Runde ${r}`] = punkteMap[team];
       }
+      await fetch("/save-scores",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(scoresData)
+      });
     }
 
-    async function saveCorrectAnswers(e) {
-      e.preventDefault();
-      const form = document.getElementById("correctAnswersForm");
-      const round = document.getElementById("runde").value;
-      const formData = new FormData(form);
-      const answers = {};
-
-      for (let [key, val] of formData.entries()) {
-        const index = key.replace("q", "");
-        answers[`question_${index}`] = [val];
-      }
-
-      const payload = {
-        round: round,
-        correctAnswers: answers,
-      };
-
-      await fetch("/save-correct-answers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+    async function addVariantToCorrect(round, question, newVar){
+      const corr = await (await fetch("/correct-answers")).json();
+      const keyR = `round_${round}`, keyQ = `question_${question}`;
+      let curr = corr[keyR]?.[keyQ] ?? "";
+      let list = normalizeCorrect(curr);
+      const exists = list.some(v=>v.toLowerCase()===newVar.toLowerCase());
+      if(!exists) list.push(newVar);
+      const joined = list.join(", ");
+      await fetch("/update-correct-answer",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ round, question, answer: joined })
       });
-
-      alert("Korrekte Antworten gespeichert!");
     }
+
+    /* ---------- Richtige Antworten – Grid mit Rundentrennern ---------- */
+    async function ladeAnswersGrid(){
+      const data = await (await fetch("/correct-answers")).json();
+      let html = `<table><thead><tr><th style="width:120px">Runde</th><th style="width:120px">Frage</th><th>Richtige Antwort(en)</th></tr></thead><tbody>`;
+
+      for(let r=1;r<=6;r++){
+        html += `<tr class="round-header"><td colspan="3">Runde ${r}</td></tr>`;
+        for(let q=1;q<=12;q++){
+          const raw = data[`round_${r}`]?.[`question_${q}`] ?? "";
+          const val = Array.isArray(raw)? raw.join(", ") : String(raw);
+          html += `<tr>
+            <td>Runde ${r}</td>
+            <td>Frage ${q}</td>
+            <td style="text-align:left">
+              <input class="answers-input" type="text"
+                     value="${escapeAttr(val)}"
+                     data-round="${r}" data-question="${q}"
+                     placeholder="z.B. Berlin; Bärlin | Hauptstadt" />
+            </td>
+          </tr>`;
+        }
+      }
+      html += `</tbody></table>`;
+      const wrap = document.getElementById("answersGrid");
+      wrap.innerHTML = html;
+
+      // Events
+      wrap.querySelectorAll(".answers-input").forEach(inp=>{
+        inp.addEventListener("blur", onSaveAnswerCell);
+        inp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); inp.blur(); } });
+      });
+    }
+    async function onSaveAnswerCell(e){
+      const el = e.target;
+      const round = el.dataset.round, question = el.dataset.question, answer = el.value.trim();
+      await fetch("/update-correct-answer",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ round, question, answer })
+      });
+      // keine Alert-Flut; still speichern
+    }
+
+    /* ---------- Teams ---------- */
+    async function ladeTeams(){
+      const res = await fetch("/teams"); const teams = await res.json();
+      document.getElementById("teamCount").textContent = teams.length;
+      const ul = document.getElementById("teamList"); ul.innerHTML="";
+      teams.forEach(t=>{ const li=document.createElement("li"); li.textContent=t; ul.appendChild(li); });
+    }
+
+    /* ---------- Lade-Orchestrierung ---------- */
+    async function ladeAllesSchwer(){ // alles komplett
+      await ladeRunde();
+      await ladePunkte();
+      await ladeAuswertung();
+      await ladeAnswersGrid();
+      await ladeTeams();
+    }
+    async function ladeAllesLeicht(){ // ohne AnswersGrid (teuer)
+      await Promise.all([ ladePunkte(), ladeAuswertung(), ladeTeams() ]);
+    }
+
+    // initial
+    ladeAllesSchwer();
+    // regelmäßige leichte Aktualisierung
+    setInterval(ladeAllesLeicht, 5000);
   </script>
 </body>
 </html>
