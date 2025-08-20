@@ -1,122 +1,122 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <title>Teamansicht</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    body {
-      text-align: center;
-      padding: 2rem;
-      font-family: sans-serif;
-    }
-    input {
-      padding: 0.5rem;
-      margin: 0.3rem;
-      width: 50px;
-      text-align: center;
-    }
-    button {
-      margin-top: 1rem;
-      padding: 0.6rem 1.2rem;
-    }
-    .abgegeben {
-      font-weight: bold;
-      color: green;
-    }
-    #eingaben {
-      margin-top: 1rem;
-    }
-    .aufgabe-label {
-      display: inline-block;
-      width: 30px;
-      text-align: right;
-      margin-right: 5px;
-    }
+    body { text-align: center; padding: 2rem; font-family: sans-serif; }
+    .grid { display:inline-block; text-align:left; margin-top:1rem }
+    .row { display:flex; align-items:center; gap:.6rem; margin:.25rem 0; }
+    .label { width:30px; text-align:right; font-weight:bold; }
+    input.answer { padding:.6rem .7rem; width: 220px; max-width:70vw; border:1px solid #ccc; border-radius:8px; }
+    button { margin-top: 1rem; padding: 0.8rem 1.2rem; border:none; border-radius:8px; background:#00a86b; color:#fff; font-size:1rem; }
+    .abgegeben { font-weight: bold; color: green; }
+    .muted { color:#666 }
   </style>
 </head>
 <body>
   <h1>Antwort-Eingabe</h1>
-  <p id="rundeInfo"></p>
-  <form id="antwortForm" onsubmit="submitAnswers(event)">
-    <div id="eingaben"></div>
+  <p id="rundeInfo" class="muted"></p>
+
+  <div id="wait" style="display:none">
+    <h2>Bitte warten, das Quiz startet gleich…</h2>
+  </div>
+
+  <form id="antwortForm" onsubmit="submitAnswers(event)" style="display:none">
+    <div id="eingaben" class="grid"></div>
     <button type="submit" id="submitBtn">Abgeben</button>
   </form>
+
   <p id="status"></p>
 
   <script>
     const teamName = localStorage.getItem("teamName");
+    if (!teamName) { window.location.href = "start.html"; }
 
-    if (!teamName) {
-      window.location.href = "start.html";
+    let lastState = { round: 0, closed: false };
+
+    document.addEventListener("DOMContentLoaded", () => refreshView(true));
+    setInterval(()=>refreshView(false), 3000);
+
+    async function getRound(){
+      const res = await fetch("/current-round"); const data = await res.json();
+      return { round: parseInt(data.round||0), closed: !!data.closed };
     }
 
-    document.addEventListener("DOMContentLoaded", async () => {
-      const rundeInfo = document.getElementById("rundeInfo");
+    async function refreshView(initial){
+      const state = await getRound();
+      if (state.round >= 7) { window.location.href = "finished.html"; return; }
+
+      const waitEl = document.getElementById("wait");
+      const formEl = document.getElementById("antwortForm");
+      const info = document.getElementById("rundeInfo");
+
+      // Warten, wenn 0 oder geschlossen
+      if (state.round === 0 || state.closed) {
+        info.textContent = state.round === 0 ? "Status: Warten" : `Runde ${state.round} – geschlossen`;
+        waitEl.style.display = "";
+        formEl.style.display = "none";
+        lastState = state;
+        return;
+      }
+
+      // Aktive Runde 1–6
+      info.textContent = `Aktuelle Runde: ${state.round}`;
+      waitEl.style.display = "none";
+
+      if (initial || state.round !== lastState.round) {
+        buildInputs(); // neu bauen bei Start oder Rundenwechsel
+        // prüfen ob dieses Team bereits abgegeben hat
+        await checkAlreadySubmitted(state.round);
+      }
+      formEl.style.display = "";
+      lastState = state;
+    }
+
+    function buildInputs(){
       const eingabenDiv = document.getElementById("eingaben");
-      const submitBtn = document.getElementById("submitBtn");
-
-      const res = await fetch("/current-round");
-      const data = await res.json();
-      const aktuelleRunde = parseInt(data.round);
-
-      // Runde >= 7 = fertig
-      if (aktuelleRunde >= 7) {
-        window.location.href = "finished.html";
-        return;
-      }
-
-      // Runde 0 = Wartebildschirm
-      if (aktuelleRunde === 0) {
-        rundeInfo.textContent = "Bitte warten, das Quiz startet gleich…";
-        document.getElementById("antwortForm").style.display = "none";
-        return;
-      }
-
-      // Normale Runden (1-6)
-      rundeInfo.textContent = `Aktuelle Runde: ${aktuelleRunde}`;
+      eingabenDiv.innerHTML = "";
       for (let i = 0; i < 12; i++) {
-        eingabenDiv.innerHTML += `
-          <div>
-            <span class="aufgabe-label">${i + 1}.</span>
-            <input name="a${i + 1}" required />
-          </div>
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `
+          <span class="label">${i+1}.</span>
+          <input class="answer" name="a${i+1}" autocomplete="off" />
         `;
-        if ((i + 1) % 6 === 0) eingabenDiv.innerHTML += "<br />";
+        eingabenDiv.appendChild(row);
+        if ((i + 1) % 6 === 0) eingabenDiv.appendChild(document.createElement("br"));
       }
+    }
 
-      // Prüfen ob bereits abgegeben
+    async function checkAlreadySubmitted(round){
       const antwRes = await fetch("/data/teamAnswers.json");
       const antwData = await antwRes.json();
-      const vorhanden = antwData[`round_${aktuelleRunde}`]?.[teamName];
-
+      const vorhanden = antwData[`round_${round}`]?.[teamName];
       if (vorhanden) {
         document.getElementById("status").textContent = "Du hast diese Runde bereits abgegeben.";
         document.getElementById("status").className = "abgegeben";
         document.getElementById("antwortForm").style.display = "none";
+      } else {
+        document.getElementById("status").textContent = "";
+        document.getElementById("antwortForm").style.display = "";
       }
-    });
+    }
 
     async function submitAnswers(e) {
       e.preventDefault();
       const form = document.getElementById("antwortForm");
       const formData = new FormData(form);
       const answers = [];
+      for (let i = 1; i <= 12; i++) answers.push(formData.get(`a${i}`) || "");
 
-      for (let i = 1; i <= 12; i++) {
-        answers.push(formData.get(`a${i}`) || "");
+      const state = await getRound();
+      if (state.round < 1 || state.round > 6 || state.closed) { // Sicherheit
+        document.getElementById("status").textContent = "Diese Runde ist nicht offen.";
+        return;
       }
 
-      const res = await fetch("/current-round");
-      const data = await res.json();
-      const aktuelleRunde = parseInt(data.round);
-
-      const payload = {
-        teamName,
-        round: aktuelleRunde,
-        answers,
-      };
-
+      const payload = { teamName, round: state.round, answers };
       const response = await fetch("/submit-answers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
