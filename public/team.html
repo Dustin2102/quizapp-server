@@ -122,6 +122,8 @@
     document.getElementById("teamBadge").textContent = "Team: " + teamName;
 
     let inputsBuilt = false;
+    let lastRound = -1;
+    let lastClosed = null;
 
     document.addEventListener("DOMContentLoaded", () => {
       refreshState();
@@ -135,6 +137,17 @@
         const aktuelleRunde = parseInt(data.round);
         const closed = !!data.closed;
 
+        // 🔄 Erkennung: Rundenwechsel oder geschlossen -> offen
+        const roundChanged = (lastRound !== aktuelleRunde);
+        const reopened = (lastClosed === true && closed === false && lastRound === aktuelleRunde);
+
+        if (roundChanged || reopened) {
+          clearAllInputs();                  // ✅ Felder leeren
+          resetStatus();                     // Status leeren
+        }
+        lastRound = aktuelleRunde;
+        lastClosed = closed;
+
         if (aktuelleRunde >= 7) { window.location.href = "finished.html"; return; }
 
         updateBadge(aktuelleRunde, closed);
@@ -146,7 +159,7 @@
         }
 
         showWait(false);
-        buildInputsOnce();
+        buildInputsOnce();                   // baut falls nötig
         await checkAlreadySubmitted(aktuelleRunde);
       }catch(e){
         console.error(e);
@@ -191,6 +204,20 @@
       showForm();
     }
 
+    function clearAllInputs(){
+      // leere vorhandene Felder; wenn noch nicht gebaut, passiert nichts
+      for (let i = 1; i <= 12; i++) {
+        const el = document.getElementById("a"+i);
+        if (el) el.value = "";
+      }
+    }
+
+    function resetStatus(){
+      const s = document.getElementById("status");
+      s.textContent = "";
+      s.className = "status";
+    }
+
     async function checkAlreadySubmitted(aktuelleRunde){
       try{
         const antwRes = await fetch("/data/teamAnswers.json");
@@ -204,8 +231,7 @@
           statusEl.className = "status abgegeben";
           form.style.display = "none";
         } else {
-          statusEl.textContent = "";
-          statusEl.className = "status";
+          // Falls vorher abgegeben war (alte Runde): sicherstellen, dass Felder sichtbar & leer sind
           form.style.display = "block";
         }
       }catch(e){ console.error(e); }
