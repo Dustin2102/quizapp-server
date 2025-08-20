@@ -19,15 +19,17 @@
     .btn.danger{background:var(--danger); color:#fff}
     select{padding:.5rem .7rem; border:1px solid #ccc; border-radius:8px}
 
-    #qrButton, #leaderButton{
+    #qrButton, #leaderButton, #revealButton{
       position:fixed; top:10px; right:10px;
       background:#008000; color:#fff; border:none; padding:.6rem 1.2rem;
       border-radius:8px; cursor:pointer; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,.2)
     }
     #qrButton{ right:10px; }
-    #leaderButton{ right:132px; background:#005bbb; }
+    #leaderButton{ right:142px; background:#005bbb; }
+    #revealButton{ right:300px; background:#6f42c1; }
     #qrButton:hover{background:#006400}
     #leaderButton:hover{background:#0047a3}
+    #revealButton:hover{background:#5a35a0}
 
     #teamCounter{
       position:fixed; top:56px; right:10px; z-index:2;
@@ -53,7 +55,8 @@
 <body>
   <h1>Admin Panel</h1>
 
-  <!-- Buttons oben rechts -->
+  <!-- NEU: zusätzlicher Button für das Reveal -->
+  <button id="revealButton" onclick="window.open('/reveal.html','_blank')">Platz-für-Platz</button>
   <button id="leaderButton" onclick="window.open('/leaderboard.html','_blank')">Auswertung starten</button>
   <button id="qrButton" onclick="window.open('/qr.html','_blank')">QR-Code</button>
   <div id="teamCounter">Teams: 0</div>

@@ -2,131 +2,280 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Platz-für-Platz</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Platz-für-Platz – Reveal</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store" />
   <style>
-    body {
-      text-align: center;
-      padding: 4rem;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to bottom, #ffffff, #f5f5f5);
+    :root{
+      --bg:#0b1020; --card:#0f1530; --muted:#9fb0d0; --fg:#e8eeff;
+      --accent:#7cc4ff; --ok:#29d398; --warn:#ffb020; --line:#2a355b;
     }
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 2rem;
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--fg);
+      background:radial-gradient(1200px 800px at 20% -10%, #182041 0, #0b1020 60%);
+      font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
+      display:flex; align-items:center; justify-content:center; padding:24px;
+      overflow:hidden;
     }
-    #platz {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-      opacity: 0;
-      transition: opacity 1s;
+    .wrap{ width:min(1100px,96vw); text-align:center; position:relative; z-index:2; }
+    header{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px}
+    h1{margin:0; font-size:clamp(1.4rem,1rem + 2.2vw,2.6rem)}
+    .small{color:var(--muted); font-size:.95rem}
+    .btn{
+      appearance:none; border:none; cursor:pointer; border-radius:12px; padding:.8rem 1.4rem;
+      font-weight:800; background:#2563eb; color:#fff; box-shadow:0 10px 24px rgba(37,99,235,.28);
     }
-    #team {
-      font-size: 4rem;
-      font-weight: bold;
-      opacity: 0;
-      transition: opacity 1s;
+    .btn:hover{ filter:saturate(1.06); }
+    .btn.secondary{ background:#334155; box-shadow:none }
+
+    .card{
+      background:linear-gradient(180deg,#12193b 0,#0d1430 100%);
+      border:1px solid var(--line); border-radius:18px; padding:28px;
+      box-shadow:0 16px 40px rgba(0,0,0,.35);
     }
-    #punkte {
-      font-size: 2.5rem;
-      color: #333;
-      margin-top: 1rem;
-      opacity: 0;
-      transition: opacity 1s;
+    #stage h2{ font-size:clamp(2rem,1.4rem + 3vw,3.4rem); margin:4px 0 8px }
+    #stage .team{ font-size:clamp(2rem,1.4rem + 2.8vw,3.1rem); font-weight:900 }
+    #stage .pts{ font-size:clamp(1.2rem,1rem + 1.2vw,1.8rem); color:var(--ok); font-weight:800; margin-top:6px }
+
+    .controls{ margin-top:14px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap }
+    table{
+      width:100%; margin-top:14px; border-collapse:separate; border-spacing:0 10px;
+      font-size:clamp(1rem,.9rem + .7vw,1.35rem); display:none;
     }
-    button {
-      font-size: 1.4rem;
-      padding: 0.6rem 2rem;
-      margin-top: 3rem;
-      cursor: pointer;
-      background-color: #00a86b;
-      border: none;
-      border-radius: 10px;
-      color: white;
-      transition: 0.2s;
+    thead th{ color:var(--muted); text-align:left; padding:8px 14px; border-bottom:1px solid var(--line) }
+    tbody tr{ background:linear-gradient(180deg,#12193b,#0d1430); border:1px solid var(--line); border-radius:12px }
+    tbody td{ padding:12px 14px; }
+    tbody tr td:first-child{ border-top-left-radius:12px; border-bottom-left-radius:12px; width:115px }
+    tbody tr td:last-child{ border-top-right-radius:12px; border-bottom-right-radius:12px; text-align:right; font-weight:900; color:var(--ok) }
+    .rank{ font-weight:900; color:var(--accent) }
+
+    /* Feuerwerk Canvas */
+    #fw{
+      position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:1;
     }
-    button:hover {
-      background-color: #007a4d;
-    }
-    /* Farben für Top 3 */
-    .gold { color: #d4af37; }
-    .silver { color: #c0c0c0; }
-    .bronze { color: #cd7f32; }
   </style>
 </head>
 <body>
-  <h1>🎉 Platzierungen nacheinander 🎉</h1>
-  <div id="platz"></div>
-  <div id="team"></div>
-  <div id="punkte"></div>
-  <button onclick="zeigeNaechstenPlatz()">▶️ Nächster Platz</button>
+  <canvas id="fw"></canvas>
+
+  <div class="wrap">
+    <header>
+      <h1>📣 Platz-für-Platz</h1>
+      <div class="small">Runde: <span id="roundInfo">–</span></div>
+    </header>
+
+    <div id="stage" class="card">
+      <h2 id="platz">Bereit?</h2>
+      <div class="team" id="team">Klicke auf „Weiter“</div>
+      <div class="pts" id="punkte"></div>
+    </div>
+
+    <div class="controls">
+      <button id="next" class="btn">▶️ Weiter</button>
+      <button id="reload" class="btn secondary" title="Daten neu laden">🔄 Neu laden</button>
+    </div>
+
+    <table id="overview">
+      <thead><tr><th>Platz</th><th>Team</th><th>Punkte</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
 
   <script>
-    let teams = [];
-    let aktuellerIndex = 0;
+    const $ = s => document.querySelector(s);
 
-    fetch("/scores")
-      .then(res => res.json())
-      .then(scores => {
-        teams = Object.entries(scores).map(([team, punkteObj]) => {
-          const punkte = Object.values(punkteObj).reduce((a, b) => a + b, 0);
-          return { team, punkte };
-        });
+    /* ---------------- Daten holen & werten (wie Leaderboard) ---------------- */
+    async function getJSON(url){
+      const r = await fetch(url+(url.includes('?')?'&':'?')+'_='+Date.now());
+      if(!r.ok) throw new Error(url+' -> '+r.status);
+      return r.json();
+    }
+    const normList = v => {
+      if (Array.isArray(v)) return v.map(x=>String(x).trim()).filter(Boolean);
+      if (typeof v === "string") return v.split(/[;,|]/g).map(s=>s.trim()).filter(Boolean);
+      return [];
+    };
+    function correctList(roundObj, idx){
+      if(!roundObj) return [];
+      const objVal = roundObj[`question_${idx}`];
+      if (typeof objVal !== "undefined") return normList(objVal);
+      const arrVal = roundObj[idx-1];
+      return normList(arrVal);
+    }
 
-        teams.sort((a, b) => b.punkte - a.punkte);
-      })
-      .catch(err => {
-        alert("Fehler beim Laden der Ergebnisse.");
-        console.error(err);
-      });
+    async function loadRanking(){
+      const [status, answersAll, correctAll] = await Promise.all([
+        getJSON("/current-round"),
+        getJSON("/data/teamAnswers.json"),
+        getJSON("/correct-answers"),
+      ]);
 
-    function zeigeNaechstenPlatz() {
-      const platzEl = document.getElementById("platz");
-      const teamEl = document.getElementById("team");
-      const punkteEl = document.getElementById("punkte");
+      $("#roundInfo").textContent = `${status.round} (${status.closed ? "geschlossen" : "offen"})`;
 
-      if (aktuellerIndex >= teams.length) {
-        platzEl.textContent = "🎊 Alle Platzierungen gezeigt!";
-        teamEl.textContent = "";
-        punkteEl.textContent = "";
+      const teams = new Set();
+      Object.values(answersAll).forEach(r => { if(r) Object.keys(r).forEach(t => teams.add(t)); });
+
+      const totals = {};
+      for(const team of teams){
+        let sum = 0;
+        for(let r=1;r<=6;r++){
+          const roundAnswers = (answersAll[`round_${r}`] || {})[team];
+          if(!roundAnswers) continue;
+          const a = roundAnswers.answers || [];
+          const corrRound = correctAll[`round_${r}`] || {};
+          let pts=0;
+          for(let i=0;i<12;i++){
+            const ua = (a[i]||"").toString().trim().toLowerCase();
+            const list = correctList(corrRound,i+1).map(s=>s.toLowerCase().trim());
+            if(ua && list.includes(ua)) pts++;
+          }
+          sum += pts;
+        }
+        totals[team]=sum;
+      }
+
+      // sortiere absteigend (Gewinner vorne) – wir zeigen später rückwärts an
+      const arr = Object.entries(totals).map(([team,punkte]) => ({team,punkte}));
+      arr.sort((a,b)=> b.punkte - a.punkte);
+
+      return arr;
+    }
+
+    /* ---------------- Reveal-Logik ---------------- */
+    let sorted = []; // [ {team,punkte}, ... ] absteigend
+    let idx = 0;     // zeigt vom ENDE nach vorne
+
+    function resetReveal(){
+      idx = 0;
+      $("#overview").style.display = "none";
+      $("#rows").innerHTML = "";
+      $("#platz").textContent = "Bereit?";
+      $("#team").textContent = "Klicke auf „Weiter“";
+      $("#punkte").textContent = "";
+      $("#next").textContent = "▶️ Weiter";
+    }
+
+    function fillOverview(){
+      const tbody = $("#rows");
+      tbody.innerHTML = sorted.map((e,i)=> `
+        <tr>
+          <td class="rank">#${i+1}</td>
+          <td>${e.team}</td>
+          <td>${e.punkte}</td>
+        </tr>
+      `).join("");
+      $("#overview").style.display = "table";
+    }
+
+    function showNext(){
+      if (!sorted.length){
+        $("#platz").textContent = "Keine Daten";
+        $("#team").textContent = "Es sind noch keine Teams/Antworten vorhanden.";
+        $("#punkte").textContent = "";
         return;
       }
 
-      const platz = aktuellerIndex + 1;
-      const eintrag = teams[aktuellerIndex];
+      const fromLast = sorted.length - 1 - idx; // Index von hinten
+      if (fromLast >= 0){
+        const rank = fromLast + 1; // tatsächliche Platzierung
+        const entry = sorted[fromLast];
+        $("#platz").textContent = `Platz ${rank}`;
+        $("#team").textContent = entry.team;
+        $("#punkte").textContent = `${entry.punkte} Punkte`;
 
-      // Reset Animation
-      platzEl.style.opacity = 0;
-      teamEl.style.opacity = 0;
-      punkteEl.style.opacity = 0;
-
-      // Timeout, um Animation zu triggern
-      setTimeout(() => {
-        platzEl.textContent = `Platz ${platz}`;
-        teamEl.textContent = eintrag.team;
-        punkteEl.textContent = `${eintrag.punkte} Punkte`;
-
-        // Farben für Top 3
-        platzEl.className = "";
-        teamEl.className = "";
-        if (platz === 1) {
-          platzEl.classList.add("gold");
-          teamEl.classList.add("gold");
-        } else if (platz === 2) {
-          platzEl.classList.add("silver");
-          teamEl.classList.add("silver");
-        } else if (platz === 3) {
-          platzEl.classList.add("bronze");
-          teamEl.classList.add("bronze");
+        // Wenn das der 1. Platz ist → Feuerwerk starten
+        if (rank === 1) {
+          startFireworks(4500);
+          $("#next").textContent = "Gesamtübersicht anzeigen";
         }
+        idx++;
+      } else {
+        // nach Platz 1 → Übersicht
+        fillOverview();
+        $("#platz").textContent = "Gesamtübersicht";
+        $("#team").textContent = "Alle Platzierungen";
+        $("#punkte").textContent = "";
+        $("#next").textContent = "Nochmal abspielen";
+        // bei erneutem Klick wieder von vorne (Reset)
+        $("#next").onclick = async () => { resetReveal(); showNext(); };
+      }
+    }
 
-        // Fade-In starten
-        platzEl.style.opacity = 1;
-        teamEl.style.opacity = 1;
-        punkteEl.style.opacity = 1;
-      }, 200);
+    $("#next").onclick = showNext;
+    $("#reload").onclick = async () => { 
+      sorted = await loadRanking(); 
+      resetReveal(); 
+    };
 
-      aktuellerIndex++;
+    // Erste Daten laden
+    (async () => { sorted = await loadRanking(); })();
+
+    /* ---------------- simples Feuerwerk (Canvas) ---------------- */
+    const canvas = document.getElementById("fw");
+    const ctx = canvas.getContext("2d");
+    let W=canvas.width=window.innerWidth, H=canvas.height=window.innerHeight;
+    window.addEventListener("resize",()=>{ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; });
+
+    const rand = (min,max)=> Math.random()*(max-min)+min;
+
+    class Particle{
+      constructor(x,y,color){
+        this.x=x; this.y=y;
+        const ang = rand(0,Math.PI*2);
+        const spd = rand(2,6);
+        this.vx = Math.cos(ang)*spd;
+        this.vy = Math.sin(ang)*spd;
+        this.life = rand(50,90);
+        this.color = color;
+      }
+      step(){
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += 0.03; // leichte Gravitation
+        this.life--;
+      }
+      draw(){
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x,this.y,2,0,Math.PI*2);
+        ctx.fill();
+      }
+    }
+
+    let particles = [];
+    let fwRunning = false, fwUntil = 0;
+
+    function burst(cx,cy){
+      const palette = ["#ff6b6b","#ffd93d","#6bcB77","#4d96ff","#b892ff","#ff8fab"];
+      const color = ()=> palette[(Math.random()*palette.length)|0];
+      for(let i=0;i<120;i++) particles.push(new Particle(cx,cy,color()));
+    }
+
+    function loop(){
+      if (!fwRunning){ ctx.clearRect(0,0,W,H); requestAnimationFrame(loop); return; }
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillRect(0,0,W,H);
+      particles.forEach(p=>{ p.step(); p.draw(); });
+      particles = particles.filter(p=> p.life>0);
+      if (Date.now() < fwUntil){
+        // in Intervallen weiter zünden
+        if (Math.random()<0.05) burst(rand(W*0.2,W*0.8), rand(H*0.2,H*0.55));
+      } else if (particles.length===0){
+        fwRunning = false; // komplett aus
+      }
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    function startFireworks(ms=4000){
+      fwRunning = true;
+      fwUntil = Date.now() + ms;
+      burst(W*0.5, H*0.35);
+      burst(W*0.3, H*0.45);
+      burst(W*0.7, H*0.4);
     }
   </script>
 </body>
