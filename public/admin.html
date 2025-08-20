@@ -6,7 +6,7 @@
   <style>
     :root{
       --ok:#c8f7c5; --no:#f8d7da; --line:#bbb; --muted:#666;
-      --accent:#00a86b; --blue:#007bff; --warn:#ff9800; --danger:#dc3545;
+      --accent:#00a86b; --warn:#ff9800; --danger:#dc3545;
     }
     *{box-sizing:border-box}
     body{font-family: Arial, sans-serif; margin:20px}
@@ -15,7 +15,6 @@
     button{margin:4px; padding:.6rem 1.0rem; cursor:pointer; border:none; border-radius:8px}
     .btn{background:#e9ecef}
     .btn.primary{background:var(--accent); color:#fff}
-    .btn.blue{background:var(--blue); color:#fff}
     .btn.warn{background:var(--warn); color:#fff}
     .btn.danger{background:var(--danger); color:#fff}
     select{padding:.5rem .7rem; border:1px solid #ccc; border-radius:8px}
@@ -90,6 +89,27 @@
   <script>
     let state = { round: 0, closed: false };
 
+    /* ---- Unicode-sichere Base64 ---- */
+    const b64enc = (str) => btoa(unescape(encodeURIComponent(str)));
+    const b64dec = (b64) => decodeURIComponent(escape(atob(b64)));
+
+    /* ---- Fetch Helper mit Cache-Buster & Fehlerwurf ---- */
+    async function getJSON(url){
+      const res = await fetch(url + (url.includes('?')?'&':'?') + '_=' + Date.now());
+      if(!res.ok) throw new Error(url + ' -> ' + res.status);
+      return res.json();
+    }
+    async function postJSON(url, body){
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(body)
+      });
+      if(!res.ok) throw new Error(url + ' -> ' + res.status);
+      return res;
+    }
+
+    /* ---- Helpers ---- */
     const normalizeCorrect = (val) => {
       if (Array.isArray(val)) return val.map(v => String(v).trim()).filter(Boolean);
       if (typeof val === "string") return val.split(/[;,|]/g).map(s => s.trim()).filter(Boolean);
@@ -97,19 +117,16 @@
     };
     const escapeAttr = (v) => String(v).replace(/"/g, "&quot;");
 
+    /* ---- Round control ---- */
     async function fetchRound() {
-      const res = await fetch("/current-round"); const data = await res.json();
+      const data = await getJSON("/current-round");
       state.round = +data.round || 0; state.closed = !!data.closed;
       document.getElementById("aktuelleRunde").textContent = state.round;
       document.getElementById("rundenStatus").textContent = state.closed ? "(geschlossen)" : "(offen)";
       document.getElementById("roundPicker").value = String(state.round);
     }
     async function setRound(round, closed) {
-      await fetch("/current-round", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ round, closed: !!closed }),
-      });
+      await postJSON("/current-round", { round, closed: !!closed });
       await fetchRound();
       await lightRefresh();
     }
@@ -117,22 +134,21 @@
       const r = parseInt(document.getElementById("roundPicker").value);
       setRound(r, false);
     }
-    function closeCurrent() {
-      setRound(state.round, true);
-    }
+    function closeCurrent() { setRound(state.round, true); }
 
     async function resetEverything() {
       const ok = confirm("Wirklich ALLES zurücksetzen? (Teams, Antworten, Punkte; Runde → 0)");
       if (!ok) return;
-      await fetch("/reset-teams", { method: "POST" });
+      await postJSON("/reset-teams", {});
       await fetchRound();
       await heavyRefresh();
       alert("Zurückgesetzt.");
     }
 
+    /* ---- Scores & Teams ---- */
     async function loadScores() {
-      const res = await fetch("/scores"); const scores = await res.json();
-      const resTeams = await fetch("/teams"); const teams = await resTeams.json();
+      const scores = await getJSON("/scores");
+      const teams  = await getJSON("/teams");
       document.getElementById("teamCounter").textContent = "Teams: " + teams.length;
 
       function totalFor(team) {
@@ -153,6 +169,7 @@
       teams.forEach(t => { const li=document.createElement("li"); li.textContent=t; ul.appendChild(li); });
     }
 
+    /* ---- Korrekte Antworten lesen (Array+Objekt kompatibel) ---- */
     function getCorrectListForQuestion(corrRound, qIndex) {
       if (!corrRound) return [];
       const objVal = corrRound[`question_${qIndex}`];
@@ -161,19 +178,15 @@
       return normalizeCorrect(arrVal);
     }
 
+    /* ---- Auswertung mit Click-to-Correct (Base64-sicher) ---- */
     async function loadEvaluation() {
       await fetchRound();
       const r = state.round, target = document.getElementById("auswertung");
       if (r < 1 || r > 6) { target.innerHTML = "<p style='color:#666'>Keine Auswertung verfügbar.</p>"; return; }
 
-      const [ansRes, corrRes, scoresRes] = await Promise.all([
-        fetch("/data/teamAnswers.json"),
-        fetch("/correct-answers"),
-        fetch("/scores"),
-      ]);
-      const ansData = await ansRes.json();
-      const corrData = await corrRes.json();
-      const scoresData = await scoresRes.json();
+      const ansData  = await getJSON("/data/teamAnswers.json");
+      const corrData = await getJSON("/correct-answers");
+      const scoresData = await getJSON("/scores");
 
       const rAnswers = ansData[`round_${r}`] || {};
       const corrRound = corrData[`round_${r}`] || {};
@@ -190,10 +203,13 @@
         for (let i = 0; i < 12; i++) {
           const ua = (a[i] || "").toString().trim();
           const list = getCorrectListForQuestion(corrRound, i+1);
-          const isOk = list.some(c => c.toLowerCase() === ua.toLowerCase());
+          const isOk = list.some(c => c.toLowerCase().trim() === ua.toLowerCase().trim());
           if (isOk) punkte++;
-          row += `<td class="${isOk?'ok':'no'}" data-round="${r}" data-q="${i+1}" data-user="${escapeAttr(ua)}"
-                    title="${isOk?'':'Klicken: Schreibweise als korrekt übernehmen'}">
+
+          const uaB64 = b64enc(ua);
+          row += `<td class="${isOk?'ok':'no'}"
+                      data-round="${r}" data-q="${i+1}" data-ua="${uaB64}"
+                      title="${isOk?'':'Klicken: Schreibweise als korrekt übernehmen'}">
                    ${ua || "&nbsp;"}<br>${isOk?'✅':'❌'}
                   </td>`;
         }
@@ -204,45 +220,52 @@
       html += "</table>";
       target.innerHTML = html;
 
+      // Click-to-correct (Base64 decode) + Fehlerfeedback
       target.querySelectorAll("td.no").forEach(td=>{
         td.addEventListener("click", async ()=>{
-          const rr = td.dataset.round, q = td.dataset.q, ua = (td.dataset.user||"").trim();
-          if (!ua) return;
-          const ok = confirm(`„${ua}“ als KORREKT für Runde ${rr}, Frage ${q} übernehmen?`);
-          if (!ok) return;
-          await addVariantToCorrect(rr, q, ua);
-          await loadEvaluation();
-          await loadScores();
+          try{
+            const rr = Number(td.dataset.round), q = Number(td.dataset.q);
+            const ua = b64dec(td.dataset.ua || "");
+            if (!ua) return;
+            const ok = confirm(`„${ua}“ als KORREKT für Runde ${rr}, Frage ${q} übernehmen?`);
+            if (!ok) return;
+            await addVariantToCorrect(rr, q, ua);
+            await loadEvaluation();
+            await loadScores();
+            // optional: kurzes visuelles Feedback
+          }catch(err){
+            alert("Konnte nicht speichern: " + err.message);
+            console.error(err);
+          }
         });
       });
 
+      // Scores mergen & speichern
       for (const team in punkteMap) {
         if (!scoresData[team]) scoresData[team] = {};
         scoresData[team][`Runde ${r}`] = punkteMap[team];
       }
-      await fetch("/save-scores", {
-        method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify(scoresData)
-      });
+      await postJSON("/save-scores", scoresData);
     }
 
     async function addVariantToCorrect(round, question, newVar) {
-      const corr = await (await fetch("/correct-answers")).json();
+      // aktuelle Liste holen
+      const corr = await getJSON("/correct-answers");
       const keyR = `round_${round}`, keyQ = `question_${question}`;
       let prev = corr[keyR] || {};
       let curr = (typeof prev[keyQ] !== "undefined") ? prev[keyQ] : prev[question - 1];
       let list = normalizeCorrect(curr);
-      if (!list.some(v => v.toLowerCase() === newVar.toLowerCase())) list.push(newVar);
-      if (!corr[keyR]) corr[keyR] = {};
-      corr[keyR][keyQ] = list.join(", ");
-      await fetch("/update-correct-answer", {
-        method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ round, question, answer: corr[keyR][keyQ] })
-      });
+
+      if (!list.some(v => v.toLowerCase().trim() === newVar.toLowerCase().trim())) list.push(newVar);
+      const joined = list.join(", ");
+
+      // Speichern + Fehler prüfen
+      await postJSON("/update-correct-answer", { round, question, answer: joined });
     }
 
+    /* ---- Richtige Antworten Grid ---- */
     async function loadAnswersGrid() {
-      const data = await (await fetch("/correct-answers")).json();
+      const data = await getJSON("/correct-answers");
       let html = `<table><thead><tr><th style="width:120px">Runde</th><th style="width:120px">Frage</th><th>Richtige Antwort(en)</th></tr></thead><tbody>`;
       for (let r = 1; r <= 6; r++) {
         html += `<tr class="round-header"><td colspan="3">Runde ${r}</td></tr>`;
@@ -275,12 +298,14 @@
     }
 
     async function onSaveAnswerCell(e) {
-      const el = e.target;
-      const round = el.dataset.round, question = el.dataset.question, answer = el.value.trim();
-      await fetch("/update-correct-answer", {
-        method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ round, question, answer })
-      });
+      try{
+        const el = e.target;
+        const round = Number(el.dataset.round), question = Number(el.dataset.question), answer = el.value.trim();
+        await postJSON("/update-correct-answer", { round, question, answer });
+      }catch(err){
+        alert("Konnte nicht speichern: " + err.message);
+        console.error(err);
+      }
     }
 
     async function heavyRefresh() {
