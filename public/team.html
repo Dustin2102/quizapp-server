@@ -1,34 +1,106 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Teamansicht</title>
+  <title>Teamansicht – Antworten</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { text-align: center; padding: 2rem; font-family: sans-serif; }
-    .grid { display:inline-block; text-align:left; margin-top:1rem }
-    .row { display:flex; align-items:center; gap:.6rem; margin:.25rem 0; }
-    .label { width:30px; text-align:right; font-weight:bold; }
-    input.answer { padding:.6rem .7rem; width: 220px; max-width:70vw; border:1px solid #ccc; border-radius:8px; }
-    button { margin-top: 1rem; padding: 0.8rem 1.2rem; border:none; border-radius:8px; background:#00a86b; color:#fff; font-size:1rem; }
-    .abgegeben { font-weight: bold; color: green; }
-    .muted { color:#666 }
+    :root{
+      --fg:#111; --muted:#666; --ok:#198754; --btn:#00a86b; --btn-hover:#007a4d;
+      --card:#ffffff; --bg-from:#ffffff; --bg-to:#f0f0f0;
+      --accent:#0080ff;
+    }
+    body{
+      margin:0; padding:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--fg);
+      background:linear-gradient(to bottom,var(--bg-from),var(--bg-to));
+      min-height:100dvh; display:flex; align-items:flex-start; justify-content:center;
+    }
+    .wrap{ width:min(980px, 92vw); margin:56px auto 40px; text-align:center; }
+    header img{ max-height:72px; margin-bottom:12px; }
+    h1{ font-size:clamp(1.6rem, 1.4rem + 1.5vw, 2.6rem); margin:.2rem 0 .4rem; }
+    .sub{ color:var(--muted); margin:.4rem 0 1.2rem; font-size:1.1rem; }
+
+    /* Status / Warten */
+    .wait{
+      background:var(--card); border:1px solid #e5e5e5; border-radius:14px;
+      padding:28px; margin-top:8px; box-shadow:0 6px 18px rgba(0,0,0,.06);
+    }
+    .wait h2{ font-size:clamp(1.4rem,1.1rem + 1.3vw,2.2rem); margin:0 0 .6rem; }
+    .spin { width:44px; height:44px; border-radius:50%;
+      border:4px solid #ddd; border-top-color:var(--accent); margin:14px auto 6px;
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Eingabe */
+    form { margin-top:10px; }
+    .grid{
+      display:grid; gap:10px; justify-content:center;
+      grid-template-columns: repeat(6, minmax(60px, 1fr));
+    }
+    @media (max-width: 900px){
+      .grid{ grid-template-columns: repeat(4, minmax(64px, 1fr)); }
+    }
+    @media (max-width: 560px){
+      .grid{ grid-template-columns: repeat(3, minmax(68px, 1fr)); }
+    }
+    .cell{
+      background:#fff; border:1px solid #e4e4e4; border-radius:10px; padding:6px 8px;
+      display:flex; flex-direction:column; align-items:center; gap:4px;
+      box-shadow:0 2px 8px rgba(0,0,0,.04);
+    }
+    .cell label{ font-size:.86rem; color:#444; }
+    .cell input{
+      width:100%; padding:10px 8px; text-align:center; font-size:1.05rem;
+      border:1px solid #d0d0d0; border-radius:8px; outline:none;
+    }
+    .cell input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,128,255,.12); }
+
+    button[type="submit"]{
+      padding:14px 26px; font-size:1.1rem; margin-top:18px;
+      background:var(--btn); color:#fff; border:none; border-radius:12px; cursor:pointer;
+      box-shadow:0 6px 16px rgba(0,0,0,.08);
+    }
+    button[type="submit"]:hover{ background:var(--btn-hover); }
+    .status{ margin-top:14px; font-weight:600; }
+    .abgegeben{ color:var(--ok); }
+    .gesperrt{ color:#b93a3a; }
+
+    /* kleiner Hinweis-Link */
+    .logout{
+      margin-top:18px; font-size:.9rem; color:var(--muted);
+    }
+    .logout a{ color:var(--muted); text-decoration:underline dotted; }
   </style>
 </head>
 <body>
-  <h1>Antwort-Eingabe</h1>
-  <p id="rundeInfo" class="muted"></p>
+  <div class="wrap">
+    <header>
+      <!-- Logo optional, falls vorhanden -->
+      <img src="/logo.png" alt="Quiz-Logo" onerror="this.style.display='none'">
+    </header>
 
-  <div id="wait" style="display:none">
-    <h2>Bitte warten, das Quiz startet gleich…</h2>
+    <h1>Antwort-Eingabe</h1>
+    <p class="sub" id="rundeInfo">Runde – wird geladen…</p>
+
+    <!-- Wartesection -->
+    <section id="waitSection" class="wait" style="display:none">
+      <div class="spin"></div>
+      <h2 id="waitHeadline">Bitte warten, das Quiz startet gleich…</h2>
+      <p class="sub" id="waitSub">Diese Runde ist noch geschlossen. Der Bildschirm aktualisiert sich automatisch.</p>
+    </section>
+
+    <!-- Formular -->
+    <form id="antwortForm" onsubmit="submitAnswers(event)" style="display:none">
+      <div id="eingaben" class="grid"></div>
+      <button type="submit">Abgeben</button>
+    </form>
+
+    <p id="status" class="status"></p>
+    <p class="logout"><a href="#" onclick="logout();return false;">Nicht dein Team? Abmelden</a></p>
   </div>
-
-  <form id="antwortForm" onsubmit="submitAnswers(event)" style="display:none">
-    <div id="eingaben" class="grid"></div>
-    <button type="submit" id="submitBtn">Abgeben</button>
-  </form>
-
-  <p id="status"></p>
 
   <script>
     const teamName = localStorage.getItem("teamName");
@@ -36,103 +108,149 @@
 
     let lastState = { round: 0, closed: false };
 
-    document.addEventListener("DOMContentLoaded", () => refreshView(true));
-    setInterval(()=>refreshView(false), 3000);
+    document.addEventListener("DOMContentLoaded", init);
 
-    async function getRound(){
-      const res = await fetch("/current-round"); const data = await res.json();
-      return { round: parseInt(data.round||0), closed: !!data.closed };
+    async function init() {
+      await refreshState();        // initial anzeigen
+      setInterval(refreshState, 4000); // auto-update
     }
 
-    async function refreshView(initial){
-      const state = await getRound();
-      if (state.round >= 7) { window.location.href = "finished.html"; return; }
+    async function refreshState(){
+      try{
+        const res = await fetch("/current-round");
+        const data = await res.json();
+        const aktuelleRunde = parseInt(data.round);
+        const closed = !!data.closed;
 
-      const waitEl = document.getElementById("wait");
-      const formEl = document.getElementById("antwortForm");
-      const info = document.getElementById("rundeInfo");
+        lastState = { round: aktuelleRunde, closed };
 
-      // Warten, wenn 0 oder geschlossen
-      if (state.round === 0 || state.closed) {
-        info.textContent = state.round === 0 ? "Status: Warten" : `Runde ${state.round} – geschlossen`;
-        waitEl.style.display = "";
-        formEl.style.display = "none";
-        lastState = state;
-        return;
+        // Finale Seite ab Runde 7
+        if (aktuelleRunde >= 7) {
+          window.location.href = "finished.html";
+          return;
+        }
+
+        // UI: Kopfzeile
+        document.getElementById("rundeInfo").textContent =
+          `Runde ${aktuelleRunde} – ${closed ? "geschlossen" : "offen"}`;
+
+        if (aktuelleRunde < 1 || closed) {
+          // Wartemodus
+          showWait(true);
+          document.getElementById("waitHeadline").textContent =
+            aktuelleRunde < 1 ? "Bitte warten, das Quiz startet gleich…" : "Runde ist noch geschlossen…";
+          document.getElementById("waitSub").textContent =
+            "Sobald die Moderation startet, öffnet sich die Eingabe automatisch.";
+          hideForm();
+          return;
+        }
+
+        // Eingabemodus
+        showWait(false);
+        buildInputsOnce();       // einmalig Felder erzeugen
+        await checkAlreadySubmitted(aktuelleRunde); // evtl. sperren
+      }catch(e){
+        console.error(e);
+        document.getElementById("rundeInfo").textContent = "Fehler beim Laden des Rundenstatus.";
       }
-
-      // Aktive Runde 1–6
-      info.textContent = `Aktuelle Runde: ${state.round}`;
-      waitEl.style.display = "none";
-
-      if (initial || state.round !== lastState.round) {
-        buildInputs(); // neu bauen bei Start oder Rundenwechsel
-        // prüfen ob dieses Team bereits abgegeben hat
-        await checkAlreadySubmitted(state.round);
-      }
-      formEl.style.display = "";
-      lastState = state;
     }
 
-    function buildInputs(){
+    function showWait(visible){
+      document.getElementById("waitSection").style.display = visible ? "block" : "none";
+    }
+    function hideForm(){
+      document.getElementById("antwortForm").style.display = "none";
+    }
+    function showForm(){
+      document.getElementById("antwortForm").style.display = "block";
+    }
+
+    let inputsBuilt = false;
+    function buildInputsOnce(){
+      if (inputsBuilt) { showForm(); return; }
       const eingabenDiv = document.getElementById("eingaben");
       eingabenDiv.innerHTML = "";
       for (let i = 0; i < 12; i++) {
-        const row = document.createElement("div");
-        row.className = "row";
-        row.innerHTML = `
-          <span class="label">${i+1}.</span>
-          <input class="answer" name="a${i+1}" autocomplete="off" />
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.innerHTML = `
+          <label for="a${i+1}">${i+1}.</label>
+          <input id="a${i+1}" name="a${i+1}" autocomplete="off" required />
         `;
-        eingabenDiv.appendChild(row);
-        if ((i + 1) % 6 === 0) eingabenDiv.appendChild(document.createElement("br"));
+        eingabenDiv.appendChild(cell);
       }
+      inputsBuilt = true;
+      showForm();
     }
 
-    async function checkAlreadySubmitted(round){
-      const antwRes = await fetch("/data/teamAnswers.json");
-      const antwData = await antwRes.json();
-      const vorhanden = antwData[`round_${round}`]?.[teamName];
-      if (vorhanden) {
-        document.getElementById("status").textContent = "Du hast diese Runde bereits abgegeben.";
-        document.getElementById("status").className = "abgegeben";
-        document.getElementById("antwortForm").style.display = "none";
-      } else {
-        document.getElementById("status").textContent = "";
-        document.getElementById("antwortForm").style.display = "";
-      }
+    async function checkAlreadySubmitted(aktuelleRunde){
+      try{
+        const antwRes = await fetch("/data/teamAnswers.json");
+        const antwData = await antwRes.json();
+        const vorhanden = antwData[`round_${aktuelleRunde}`]?.[teamName];
+        const statusEl = document.getElementById("status");
+        const form = document.getElementById("antwortForm");
+
+        if (vorhanden) {
+          statusEl.textContent = "Du hast diese Runde bereits abgegeben.";
+          statusEl.className = "status abgegeben";
+          form.style.display = "none";
+        } else {
+          statusEl.textContent = "";
+          statusEl.className = "status";
+          form.style.display = "block";
+        }
+      }catch(e){ console.error(e); }
     }
 
-    async function submitAnswers(e) {
+    async function submitAnswers(e){
       e.preventDefault();
       const form = document.getElementById("antwortForm");
       const formData = new FormData(form);
       const answers = [];
       for (let i = 1; i <= 12; i++) answers.push(formData.get(`a${i}`) || "");
 
-      const state = await getRound();
-      if (state.round < 1 || state.round > 6 || state.closed) { // Sicherheit
-        document.getElementById("status").textContent = "Diese Runde ist nicht offen.";
-        return;
-      }
+      // Neu laden des States, um Race-Conditions zu vermeiden
+      const res = await fetch("/current-round");
+      const data = await res.json();
+      const aktuelleRunde = parseInt(data.round);
 
-      const payload = { teamName, round: state.round, answers };
-      const response = await fetch("/submit-answers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const payload = { teamName, round: aktuelleRunde, answers };
 
-      if (response.status === 200) {
-        document.getElementById("status").textContent = "Antworten erfolgreich abgegeben!";
-        document.getElementById("status").className = "abgegeben";
-        form.style.display = "none";
-      } else if (response.status === 409) {
-        document.getElementById("status").textContent = "Du hast bereits abgegeben.";
-        form.style.display = "none";
-      } else {
-        document.getElementById("status").textContent = "Fehler beim Absenden!";
+      try{
+        const response = await fetch("/submit-answers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const statusEl = document.getElementById("status");
+
+        if (response.status === 200) {
+          statusEl.textContent = "Antworten erfolgreich abgegeben!";
+          statusEl.className = "status abgegeben";
+          form.style.display = "none";
+        } else if (response.status === 409) {
+          statusEl.textContent = "Du hast bereits abgegeben.";
+          statusEl.className = "status abgegeben";
+          form.style.display = "none";
+        } else if (response.status === 423) {
+          statusEl.textContent = "Runde beendet – nächste Runde in ein paar Minuten.";
+          statusEl.className = "status gesperrt";
+          form.style.display = "none";
+          showWait(true);
+        } else {
+          statusEl.textContent = "Fehler beim Absenden!";
+          statusEl.className = "status";
+        }
+      }catch(err){
+        document.getElementById("status").textContent = "Serverfehler";
       }
+    }
+
+    function logout(){
+      localStorage.removeItem("teamName");
+      window.location.href = "start.html";
     }
   </script>
 </body>
