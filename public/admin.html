@@ -3,219 +3,296 @@
 <head>
   <meta charset="UTF-8" />
   <title>Admin Panel</title>
-  <link rel="stylesheet" href="style.css" />
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 1rem;
+    :root{
+      --ok:#c8f7c5; --no:#f8d7da; --line:#bbb; --muted:#666;
+      --accent:#00a86b; --blue:#007bff; --warn:#ff9800; --danger:#dc3545;
     }
-    h1 {
-      margin-bottom: 1rem;
+    *{box-sizing:border-box}
+    body{font-family: Arial, sans-serif; margin:20px}
+    h1{margin:0 0 10px}
+    h2{margin:24px 0 8px}
+    button{margin:4px; padding:.6rem 1.0rem; cursor:pointer; border:none; border-radius:8px}
+    .btn{background:#e9ecef}
+    .btn.primary{background:var(--accent); color:#fff}
+    .btn.blue{background:var(--blue); color:#fff}
+    .btn.warn{background:var(--warn); color:#fff}
+    .btn.danger{background:var(--danger); color:#fff}
+    select{padding:.5rem .7rem; border:1px solid #ccc; border-radius:8px}
+
+    #qrButton{
+      position:fixed; top:10px; right:10px;
+      background:#008000; color:#fff; border:none; padding:.6rem 1.2rem;
+      border-radius:8px; cursor:pointer; font-weight:bold;
+      box-shadow:0 2px 6px rgba(0,0,0,.2)
     }
-    button {
-      margin: 0.3rem;
-      padding: 0.5rem 1rem;
+    #qrButton:hover{background:#006400}
+    #teamCounter{
+      position:fixed; top:56px; right:10px; z-index:2;
+      font-weight:bold; background:#f0f0f0; padding:.3rem .6rem;
+      border-radius:6px; border:1px solid #ccc;
     }
-    #qrButton {
-      position: absolute;
-      top: 10px;
-      right: 10px;
+
+    table{border-collapse:collapse; margin:12px 0; width:100%; max-width:1200px}
+    th,td{border:1px solid var(--line); padding:8px; text-align:center}
+    th{background:#f0f0f0; position:sticky; top:0}
+    .ok{background:var(--ok)} .no{background:var(--no); cursor:pointer}
+    .hint{font-size:.92rem; color:var(--muted); margin:6px 0 10px}
+
+    .round-header td{
+      background:#eef7ff; font-weight:bold; text-align:left; border-top:3px solid #89bfff;
     }
-    #teamCounter {
-      position: absolute;
-      top: 50px;
-      right: 10px;
-      font-weight: bold;
-      background: #f0f0f0;
-      padding: 0.3rem 0.6rem;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    .teams-list {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      max-width: 400px;
-      background: #f9f9f9;
-    }
-    .teams-list h2 {
-      margin-top: 0;
-    }
-    .teams-list ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .teams-list li {
-      padding: 0.3rem 0;
-      border-bottom: 1px solid #ddd;
-    }
-    .teams-list li:last-child {
-      border-bottom: none;
-    }
+    .answers-input{width:100%; max-width:520px; padding:.4rem; border:1px solid #ccc; border-radius:6px; text-align:left}
+
+    .flex{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap}
+    .spacer{flex:1}
   </style>
 </head>
 <body>
   <h1>Admin Panel</h1>
+  <button id="qrButton" onclick="window.open('qr.html','_blank')">QR-Code</button>
+  <div id="teamCounter">Teams: 0</div>
 
-  <!-- Buttons -->
-  <button id="qrButton" onclick="window.open('qr.html','_blank')">QR-Code anzeigen</button>
-  <div id="teamCounter">Teams angemeldet: 0</div>
-  <button onclick="setRound('start')">Runde starten</button>
-  <button onclick="setRound('close')">Runde schließen</button>
-  <button onclick="endQuiz()">Quiz beenden</button>
-  <button onclick="resetTeams()">Teams zurücksetzen</button>
-
-  <div id="roundInfo"></div>
-
-  <!-- Tabelle für Antworten -->
-  <h2>Antworten</h2>
-  <table border="1" cellpadding="5" id="answersTable">
-    <thead>
-      <tr>
-        <th>Runde</th>
-        <th>Team</th>
-        <th>Antworten</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <!-- Richtige Antworten -->
-  <h2>Richtige Antworten verwalten</h2>
-  <div id="correctAnswers"></div>
-  <button onclick="saveCorrectAnswers()">Speichern</button>
-
-  <!-- Teams -->
-  <div class="teams-list">
-    <h2>Angemeldete Teams</h2>
-    <ul id="teamsUl"></ul>
+  <h2>Rundensteuerung</h2>
+  <div class="flex">
+    <div>Aktuell: <strong id="aktuelleRunde">0</strong> <span id="rundenStatus" style="color:#666"></span></div>
+    <div class="spacer"></div>
+    <label for="roundPicker">Ziel-Runde:</label>
+    <select id="roundPicker">
+      <option value="0">0 – Warten</option>
+      <option value="1">1 – Runde 1</option>
+      <option value="2">2 – Runde 2</option>
+      <option value="3">3 – Runde 3</option>
+      <option value="4">4 – Runde 4</option>
+      <option value="5">5 – Runde 5</option>
+      <option value="6">6 – Runde 6</option>
+      <option value="7">7 – Ende</option>
+    </select>
+    <button class="btn primary" onclick="setSelectedRoundOpen()">Setzen & öffnen</button>
+    <button class="btn warn" onclick="closeCurrent()">Nur schließen</button>
   </div>
 
+  <h2>Punktetabelle (Gesamt)</h2>
+  <div id="punkteTabelle"></div>
+
+  <h2>Auswertung (aktuelle Runde)</h2>
+  <p class="hint">Auf eine <strong>rote Zelle</strong> klicken, um diese Schreibweise als <em>korrekt</em> zu übernehmen – die Tabelle rechnet sofort neu.</p>
+  <div id="auswertung"></div>
+
+  <h2>Richtige Antworten – Übersicht & Bearbeitung</h2>
+  <p class="hint">Mehrere Varianten mit <code>,</code>/<code>;</code>/<code>|</code> trennen (z. B. <em>Berlin; Bärlin | Hauptstadt</em>).</p>
+  <div id="answersGrid"></div>
+
+  <h2>Teams</h2>
+  <ul id="teamList"></ul>
+
   <script>
-    let currentRound = 0;
+    let state = { round: 0, closed: false };
 
-    async function loadRound() {
-      const res = await fetch("/current-round");
-      const data = await res.json();
-      currentRound = parseInt(data.round);
-      document.getElementById("roundInfo").textContent = "Aktuelle Runde: " + currentRound;
+    const normalizeCorrect = (val) => {
+      if (Array.isArray(val)) return val.map(v => String(v).trim()).filter(Boolean);
+      if (typeof val === "string") return val.split(/[;,|]/g).map(s => s.trim()).filter(Boolean);
+      return [];
+    };
+    const escapeAttr = (v) => String(v).replace(/"/g, "&quot;");
+
+    async function fetchRound() {
+      const res = await fetch("/current-round"); const data = await res.json();
+      state.round = +data.round || 0; state.closed = !!data.closed;
+      document.getElementById("aktuelleRunde").textContent = state.round;
+      document.getElementById("rundenStatus").textContent = state.closed ? "(geschlossen)" : "(offen)";
+      document.getElementById("roundPicker").value = String(state.round);
     }
-
-    async function setRound(action) {
-      if (action === "start") {
-        currentRound++;
-      } else if (action === "close") {
-        // Runde schließen, aber Zahl nicht erhöhen
-      }
+    async function setRound(round, closed) {
       await fetch("/current-round", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ round: currentRound }),
+        body: JSON.stringify({ round, closed: !!closed }),
       });
-      loadRound();
-      loadAnswers();
+      await fetchRound();
+      await lightRefresh();
+    }
+    function setSelectedRoundOpen() {
+      const r = parseInt(document.getElementById("roundPicker").value);
+      setRound(r, false);
+    }
+    function closeCurrent() {
+      setRound(state.round, true);
     }
 
-    async function endQuiz() {
-      currentRound = 7; // Quiz beendet
-      await fetch("/current-round", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ round: currentRound }),
-      });
-      loadRound();
-    }
+    async function loadScores() {
+      const res = await fetch("/scores"); const scores = await res.json();
+      const resTeams = await fetch("/teams"); const teams = await resTeams.json();
+      document.getElementById("teamCounter").textContent = "Teams: " + teams.length;
 
-    async function loadAnswers() {
-      const res = await fetch("/data/teamAnswers.json");
-      const data = await res.json();
-      const tbody = document.querySelector("#answersTable tbody");
-      tbody.innerHTML = "";
-
-      for (const [round, teams] of Object.entries(data)) {
-        for (const [team, entry] of Object.entries(teams)) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${round}</td>
-            <td>${team}</td>
-            <td>${entry.answers.join(", ")}</td>
-          `;
-          tbody.appendChild(tr);
-        }
+      function totalFor(team) {
+        const s = scores[team];
+        if (typeof s === "number") return s;
+        if (s && typeof s === "object") return Object.values(s).reduce((a,b)=>a+(+b||0),0);
+        return 0;
       }
+      const rows = teams.map(t => ({ team: t, sum: totalFor(t) }))
+                        .sort((a,b)=>b.sum-a.sum);
+
+      let html = "<table><tr><th>Platz</th><th>Team</th><th>Punkte</th></tr>";
+      rows.forEach((r,i)=> html += `<tr><td>${i+1}</td><td>${r.team}</td><td>${r.sum}</td></tr>`);
+      html += "</table>";
+      document.getElementById("punkteTabelle").innerHTML = html;
+
+      const ul = document.getElementById("teamList"); ul.innerHTML="";
+      teams.forEach(t => { const li=document.createElement("li"); li.textContent=t; ul.appendChild(li); });
     }
 
-    async function loadCorrectAnswers() {
-      const res = await fetch("/correct-answers");
-      const data = await res.json();
-      const container = document.getElementById("correctAnswers");
-      container.innerHTML = "";
+    // Liest korrekte Antworten – unterstützt Objekt (question_#) UND Array
+    function getCorrectListForQuestion(corrRound, qIndex) {
+      if (!corrRound) return [];
+      const objVal = corrRound[`question_${qIndex}`];
+      if (typeof objVal !== "undefined") return normalizeCorrect(objVal);
+      // Fallback: Array-Format
+      const arrVal = corrRound[qIndex - 1];
+      return normalizeCorrect(arrVal);
+    }
 
-      for (let r = 1; r <= 6; r++) {
-        const roundDiv = document.createElement("div");
-        roundDiv.innerHTML = `<h3>Runde ${r}</h3>`;
-        for (let q = 1; q <= 12; q++) {
-          const input = document.createElement("input");
-          input.placeholder = "Frage " + q;
-          input.value = data[`round_${r}`]?.[q - 1] || "";
-          input.dataset.round = r;
-          input.dataset.index = q - 1;
-          roundDiv.appendChild(input);
+    async function loadEvaluation() {
+      await fetchRound();
+      const r = state.round, target = document.getElementById("auswertung");
+      if (r < 1 || r > 6) { target.innerHTML = "<p style='color:#666'>Keine Auswertung verfügbar.</p>"; return; }
+
+      const [ansRes, corrRes, scoresRes] = await Promise.all([
+        fetch("/data/teamAnswers.json"),
+        fetch("/correct-answers"),
+        fetch("/scores"),
+      ]);
+      const ansData = await ansRes.json();
+      const corrData = await corrRes.json();
+      const scoresData = await scoresRes.json();
+
+      const rAnswers = ansData[`round_${r}`] || {};
+      const corrRound = corrData[`round_${r}`] || {};
+
+      let html = `<table><tr><th>Team</th>${Array.from({length:12},(_,i)=>`<th>${i+1}</th>`).join('')}<th>Zeit</th></tr>`;
+      const punkteMap = {};
+
+      for (const team in rAnswers) {
+        const entry = rAnswers[team];
+        const a = entry.answers || [];
+        const ts = new Date(entry.timestamp).toLocaleString("de-DE");
+        let punkte=0, row=`<td>${team}</td>`;
+
+        for (let i = 0; i < 12; i++) {
+          const ua = (a[i] || "").toString().trim();
+          const list = getCorrectListForQuestion(corrRound, i+1);
+          const isOk = list.some(c => c.toLowerCase() === ua.toLowerCase());
+          if (isOk) punkte++;
+          row += `<td class="${isOk?'ok':'no'}" data-round="${r}" data-q="${i+1}" data-user="${escapeAttr(ua)}"
+                    title="${isOk?'':'Klicken: Schreibweise als korrekt übernehmen'}">
+                   ${ua || "&nbsp;"}<br>${isOk?'✅':'❌'}
+                  </td>`;
         }
-        container.appendChild(roundDiv);
+        row += `<td>${ts}</td>`;
+        html += `<tr>${row}</tr>`;
+        punkteMap[team] = punkte;
       }
-    }
+      html += "</table>";
+      target.innerHTML = html;
 
-    async function saveCorrectAnswers() {
-      const inputs = document.querySelectorAll("#correctAnswers input");
-      const grouped = {};
-      inputs.forEach((inp) => {
-        const r = inp.dataset.round;
-        if (!grouped[r]) grouped[r] = [];
-        grouped[r][inp.dataset.index] = inp.value;
-      });
-
-      for (const [round, answers] of Object.entries(grouped)) {
-        await fetch("/save-correct-answers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ round, correctAnswers: answers }),
+      // Click-to-correct
+      target.querySelectorAll("td.no").forEach(td=>{
+        td.addEventListener("click", async ()=>{
+          const rr = td.dataset.round, q = td.dataset.q, ua = (td.dataset.user||"").trim();
+          if (!ua) return;
+          const ok = confirm(`„${ua}“ als KORREKT für Runde ${rr}, Frage ${q} übernehmen?`);
+          if (!ok) return;
+          await addVariantToCorrect(rr, q, ua);
+          await loadEvaluation();
+          await loadScores();
         });
-      }
-      alert("Gespeichert!");
-    }
-
-    async function loadTeams() {
-      const res = await fetch("/teams");
-      const data = await res.json();
-      const ul = document.getElementById("teamsUl");
-      ul.innerHTML = "";
-      data.forEach(team => {
-        const li = document.createElement("li");
-        li.textContent = team;
-        ul.appendChild(li);
       });
-      // Zähler aktualisieren
-      document.getElementById("teamCounter").textContent = "Teams angemeldet: " + data.length;
+
+      // Scores mergen & speichern
+      for (const team in punkteMap) {
+        if (!scoresData[team]) scoresData[team] = {};
+        scoresData[team][`Runde ${r}`] = punkteMap[team];
+      }
+      await fetch("/save-scores", {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(scoresData)
+      });
     }
 
-    async function resetTeams() {
-      if (!confirm("Willst du wirklich alle Teams löschen?")) return;
-      await fetch("/reset-teams", { method: "POST" });
-      loadTeams();
+    async function addVariantToCorrect(round, question, newVar) {
+      const corr = await (await fetch("/correct-answers")).json();
+      const keyR = `round_${round}`, keyQ = `question_${question}`;
+
+      // Hole bisherige (Objekt- oder Array-Format)
+      let prev = corr[keyR] || {};
+      let curr = (typeof prev[keyQ] !== "undefined") ? prev[keyQ] : prev[question - 1];
+      let list = normalizeCorrect(curr);
+      if (!list.some(v => v.toLowerCase() === newVar.toLowerCase())) list.push(newVar);
+
+      // Schreibe im Objektformat
+      if (!corr[keyR]) corr[keyR] = {};
+      corr[keyR][keyQ] = list.join(", ");
+
+      await fetch("/update-correct-answer", {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ round, question, answer: corr[keyR][keyQ] })
+      });
     }
 
-    // automatische Aktualisierung
-    loadRound();
-    loadAnswers();
-    loadCorrectAnswers();
-    loadTeams();
-    setInterval(() => {
-      loadAnswers();
-      loadTeams();
-    }, 5000);
+    async function loadAnswersGrid() {
+      const data = await (await fetch("/correct-answers")).json();
+      let html = `<table><thead><tr><th style="width:120px">Runde</th><th style="width:120px">Frage</th><th>Richtige Antwort(en)</th></tr></thead><tbody>`;
+      for (let r = 1; r <= 6; r++) {
+        html += `<tr class="round-header"><td colspan="3">Runde ${r}</td></tr>`;
+        const round = data[`round_${r}`] || {};
+        for (let q = 1; q <= 12; q++) {
+          const rawObj = round[`question_${q}`];
+          const rawArr = round[q - 1];
+          const val = rawObj ?? rawArr ?? "";
+          const show = Array.isArray(val) ? val.join(", ") : String(val);
+          html += `<tr>
+            <td>Runde ${r}</td>
+            <td>Frage ${q}</td>
+            <td style="text-align:left">
+              <input class="answers-input" type="text"
+                     value="${escapeAttr(show)}"
+                     data-round="${r}" data-question="${q}"
+                     placeholder="z.B. Berlin; Bärlin | Hauptstadt" />
+            </td>
+          </tr>`;
+        }
+      }
+      html += `</tbody></table>`;
+      const wrap = document.getElementById("answersGrid");
+      wrap.innerHTML = html;
+
+      wrap.querySelectorAll(".answers-input").forEach(inp=>{
+        inp.addEventListener("blur", onSaveAnswerCell);
+        inp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); inp.blur(); } });
+      });
+    }
+
+    async function onSaveAnswerCell(e) {
+      const el = e.target;
+      const round = el.dataset.round, question = el.dataset.question, answer = el.value.trim();
+      await fetch("/update-correct-answer", {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ round, question, answer })
+      });
+    }
+
+    async function heavyRefresh() {
+      await fetchRound();
+      await Promise.all([loadScores(), loadEvaluation(), loadAnswersGrid()]);
+    }
+    async function lightRefresh() {
+      await Promise.all([loadScores(), loadEvaluation()]);
+    }
+
+    // init + Poll
+    heavyRefresh();
+    setInterval(lightRefresh, 5000);
   </script>
 </body>
 </html>
