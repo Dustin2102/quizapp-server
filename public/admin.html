@@ -53,9 +53,9 @@
 <body>
   <h1>Admin Panel</h1>
 
-  <!-- neue Buttons oben rechts -->
-  <button id="leaderButton" onclick="window.open('leaderboard.html','_blank')">Auswertung starten</button>
-  <button id="qrButton" onclick="window.open('qr.html','_blank')">QR-Code</button>
+  <!-- Buttons oben rechts -->
+  <button id="leaderButton" onclick="window.open('/leaderboard.html','_blank')">Auswertung starten</button>
+  <button id="qrButton" onclick="window.open('/qr.html','_blank')">QR-Code</button>
   <div id="teamCounter">Teams: 0</div>
 
   <h2>Rundensteuerung</h2>
@@ -95,11 +95,9 @@
   <script>
     let state = { round: 0, closed: false };
 
-    /* ---- Unicode-sichere Base64 ---- */
     const b64enc = (str) => btoa(unescape(encodeURIComponent(str)));
     const b64dec = (b64) => decodeURIComponent(escape(atob(b64)));
 
-    /* ---- Fetch Helper ---- */
     async function getJSON(url){
       const res = await fetch(url + (url.includes('?')?'&':'?') + '_=' + Date.now());
       if(!res.ok) throw new Error(url + ' -> ' + res.status);
@@ -310,7 +308,6 @@
       await Promise.all([loadScores(), loadEvaluation()]);
     }
 
-    // init + Poll
     heavyRefresh();
     setInterval(lightRefresh, 5000);
   </script>

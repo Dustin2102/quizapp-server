@@ -2,285 +2,140 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Teamansicht – Antworten</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="style.css" />
+  <title>Live-Auswertung</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store" />
   <style>
     :root{
-      --fg:#0f172a; --muted:#64748b; --accent:#3b82f6;
-      --accent-2:#22c55e; --accent-3:#ef4444;
-      --bg-from:#ffffff; --bg-to:#f6f8fb; --card:#ffffff;
-      --ring: rgba(59,130,246,.18); --border:#e5e7eb;
-      --btn-grad-from:#22c55e; --btn-grad-to:#16a34a; --btn-grad-hover:#0f9a40;
-      --shadow: 0 6px 20px rgba(2,6,23,.08);
+      --bg:#0b1020; --card:#0f1530; --muted:#9fb0d0; --fg:#e8eeff;
+      --accent:#7cc4ff; --line:#2a355b; --ok:#29d398;
     }
-
+    *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0; padding:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--fg);
-      background: linear-gradient(180deg, var(--bg-from), var(--bg-to));
-      min-height:100dvh; display:flex; align-items:flex-start; justify-content:center;
+      margin:0; background:radial-gradient(1200px 800px at 20% -10%, #182041 0, #0b1020 60%);
+      color:var(--fg); font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
+      display:flex; align-items:center; justify-content:center; padding:24px;
     }
-    .wrap{ width:min(560px, 94vw); margin:56px auto 40px; text-align:center; }
-
-    header img{ max-height:64px; margin-bottom:10px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.08)); }
-    h1{ font-size:clamp(1.6rem, 1.2rem + 2vw, 2.4rem); margin:.2rem 0 .4rem; }
-    .sub{ color:var(--muted); margin:.2rem 0 1rem; font-size:1.02rem; }
-
+    .wrap{ width:min(1100px, 96vw); }
+    header{
+      display:flex; align-items:center; gap:16px; justify-content:space-between; margin-bottom:14px;
+    }
+    h1{ margin:0; font-size:clamp(1.6rem,1.1rem + 2.2vw,2.6rem); letter-spacing:.4px }
+    .meta{ color:var(--muted); font-size:.95rem }
     .badge{
-      display:inline-flex; align-items:center; gap:.5rem;
-      padding:.35rem .7rem; border-radius:999px; font-weight:600; font-size:.95rem;
-      border:1px solid var(--border); background:#f8fafc; color:#0f172a;
+      border:1px solid var(--line); background:#0d1430; border-radius:999px; padding:.35rem .7rem; font-weight:700;
     }
-    .dot{width:.55rem;height:.55rem;border-radius:50%;}
-    .open  .dot{ background:var(--accent-2); }
-    .closed .dot{ background:var(--accent-3); }
-    .open{ border-color:#bbf7d0; background:#f0fdf4; color:#14532d; }
-    .closed{ border-color:#fecaca; background:#fef2f2; color:#7f1d1d; }
-
-    .team-badge{
-      display:inline-block; margin:.35rem 0 .8rem; font-weight:700;
-      padding:.35rem .7rem; border-radius:10px; border:1px solid var(--border); background:#fff;
+    table{
+      width:100%; border-collapse:separate; border-spacing:0 10px; font-size:clamp(1rem, .9rem + .7vw, 1.35rem);
     }
-
-    .card{
-      background:var(--card); border:1px solid var(--border); border-radius:16px;
-      padding:20px; box-shadow:var(--shadow);
+    thead th{
+      color:var(--muted); text-align:left; padding:8px 14px; font-weight:700;
+      border-bottom:1px solid var(--line);
     }
-
-    /* Wartesection */
-    .wait{ margin-top:10px; }
-    .wait h2{ font-size:clamp(1.2rem,1rem + 1.2vw,1.8rem); margin:.2rem 0 .5rem; }
-    .spin{
-      width:44px; height:44px; border-radius:999px; margin:10px auto 8px;
-      border:4px solid #e5e7eb; border-top-color:var(--accent);
-      animation:spin 1s linear infinite;
+    tbody tr{
+      background:linear-gradient(180deg, #12193b, #0d1430);
+      border:1px solid var(--line); border-radius:12px;
+      box-shadow:0 6px 16px rgba(0,0,0,.25);
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Liste (untereinander) */
-    form{ margin-top:8px; }
-    .list{ display:flex; flex-direction:column; gap:10px; }
-    .row{
-      text-align:left; background:#fff; border:1px solid var(--border); border-radius:12px;
-      padding:10px 12px; box-shadow:0 3px 10px rgba(2,6,23,.05);
-    }
-    .row label{ display:block; font-size:.95rem; color:#334155; font-weight:600; margin-bottom:6px; }
-    .row input{
-      width:100%; padding:12px 10px; font-size:1.06rem; border:1px solid #d1d5db; border-radius:10px;
-      outline:none; transition: box-shadow .15s, border-color .15s; background:#fdfdfd;
-    }
-    .row input:focus{ border-color:var(--accent); box-shadow:0 0 0 4px var(--ring); background:#fff; }
-
-    button[type="submit"]{
-      width:100%; padding:14px 22px; font-size:1.05rem; margin-top:14px; font-weight:700;
-      background:linear-gradient(135deg, var(--btn-grad-from), var(--btn-grad-to));
-      color:#fff; border:none; border-radius:14px; cursor:pointer; box-shadow:0 10px 24px rgba(34,197,94,.25);
-    }
-    button[type="submit"]:hover{ filter:saturate(1.05); background:var(--btn-grad-hover); }
-
-    .status{ margin-top:12px; font-weight:700; }
-    .abgegeben{ color:var(--accent-2); }
-    .gesperrt{ color:var(--accent-3); }
+    tbody td{ padding:12px 14px; }
+    tbody tr td:first-child{ border-top-left-radius:12px; border-bottom-left-radius:12px; width:110px; }
+    tbody tr td:last-child{ border-top-right-radius:12px; border-bottom-right-radius:12px; text-align:right; font-weight:800; color:var(--ok) }
+    .rank{ font-weight:900; color:var(--accent) }
+    .small{ font-size:.92rem; color:var(--muted); margin-top:6px }
+    footer{ margin-top:12px; color:var(--muted); font-size:.92rem; display:flex; justify-content:space-between }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <img src="/logo.png" alt="Quiz-Logo" onerror="this.style.display='none'">
+      <h1>📊 Live-Auswertung</h1>
+      <div class="meta">
+        <span id="roundBadge" class="badge">–</span>
+      </div>
     </header>
 
-    <h1>Antwort-Eingabe</h1>
-    <div class="team-badge" id="teamBadge">Team: –</div>
-    <p class="sub">
-      <span id="rundeBadge" class="badge closed">
-        <span class="dot"></span>
-        <span id="rundeInfoText">Runde – lädt…</span>
-      </span>
-    </p>
+    <table>
+      <thead>
+        <tr><th>Platz</th><th>Team</th><th>Punkte</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
 
-    <!-- Wartesection -->
-    <section id="waitSection" class="card wait" style="display:none">
-      <div class="spin"></div>
-      <h2 id="waitHeadline">Bitte warten, das Quiz startet gleich…</h2>
-      <p class="sub" id="waitSub">Diese Runde ist noch geschlossen. Der Bildschirm aktualisiert sich automatisch.</p>
-    </section>
-
-    <!-- Formular -->
-    <form id="antwortForm" onsubmit="submitAnswers(event)" style="display:none">
-      <div id="eingaben" class="list"></div>
-      <button type="submit">Antworten abgeben</button>
-    </form>
-
-    <p id="status" class="status"></p>
+    <footer>
+      <div class="small">Aktualisiert: <span id="ts">–</span></div>
+      <div class="small">Quelle: Antworten &amp; richtige Lösungen (live berechnet)</div>
+    </footer>
   </div>
 
   <script>
-    const teamName = localStorage.getItem("teamName");
-    if (!teamName) { window.location.href = "start.html"; }
-    document.getElementById("teamBadge").textContent = "Team: " + teamName;
+    const $ = (s)=>document.querySelector(s);
+    const now = ()=> new Date().toLocaleTimeString("de-DE",{hour12:false});
+    async function getJSON(url){
+      const r = await fetch(url+(url.includes('?')?'&':'?')+'_='+Date.now());
+      if(!r.ok) throw new Error(url+' -> '+r.status);
+      return r.json();
+    }
 
-    let inputsBuilt = false;
-    let lastRound = -1;
-    let lastClosed = null;
+    const normList = v => {
+      if (Array.isArray(v)) return v.map(x=>String(x).trim()).filter(Boolean);
+      if (typeof v === "string") return v.split(/[;,|]/g).map(s=>s.trim()).filter(Boolean);
+      return [];
+    };
+    function correctList(roundObj, qIdx){
+      if(!roundObj) return [];
+      const objVal = roundObj[`question_${qIdx}`];
+      if (typeof objVal !== "undefined") return normList(objVal);
+      const arrVal = roundObj[qIdx-1];
+      return normList(arrVal);
+    }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      refreshState();
-      setInterval(refreshState, 4000); // Auto-Refresh
-    });
+    async function computeScores(){
+      const [status, answersAll, correctAll] = await Promise.all([
+        getJSON("/current-round"),
+        getJSON("/data/teamAnswers.json"),
+        getJSON("/correct-answers"),
+      ]);
 
-    async function refreshState(){
-      try{
-        const res = await fetch("/current-round");
-        const data = await res.json();
-        const aktuelleRunde = parseInt(data.round);
-        const closed = !!data.closed;
+      $("#roundBadge").textContent = `Runde ${status.round} – ${status.closed ? "geschlossen" : "offen"}`;
 
-        // 🔄 Erkennung: Rundenwechsel oder geschlossen -> offen
-        const roundChanged = (lastRound !== aktuelleRunde);
-        const reopened = (lastClosed === true && closed === false && lastRound === aktuelleRunde);
+      const teams = new Set();
+      Object.values(answersAll).forEach(r => { if(r) Object.keys(r).forEach(t => teams.add(t)); });
 
-        if (roundChanged || reopened) {
-          clearAllInputs();                  // ✅ Felder leeren
-          resetStatus();                     // Status leeren
+      const totals = {};
+      for (const team of teams) {
+        let sum = 0;
+        for (let r = 1; r <= 6; r++) {
+          const roundAnswers = (answersAll[`round_${r}`] || {})[team];
+          if (!roundAnswers) continue;
+          const a = roundAnswers.answers || [];
+          const corrRound = correctAll[`round_${r}`] || {};
+          let pts = 0;
+          for (let i = 0; i < 12; i++) {
+            const ua = (a[i] || "").toString().trim().toLowerCase();
+            const list = correctList(corrRound, i+1).map(s => s.toLowerCase().trim());
+            if (ua && list.includes(ua)) pts++;
+          }
+          sum += pts;
         }
-        lastRound = aktuelleRunde;
-        lastClosed = closed;
-
-        if (aktuelleRunde >= 7) { window.location.href = "finished.html"; return; }
-
-        updateBadge(aktuelleRunde, closed);
-
-        if (aktuelleRunde < 1 || closed) {
-          showWait(true, aktuelleRunde);
-          hideForm();
-          return;
-        }
-
-        showWait(false);
-        buildInputsOnce();                   // baut falls nötig
-        await checkAlreadySubmitted(aktuelleRunde);
-      }catch(e){
-        console.error(e);
-        setBadgeText("Rundenstatus: Fehler");
+        totals[team] = sum;
       }
+
+      const rows = Object.entries(totals).sort((a,b)=> b[1]-a[1]);
+      const tbody = $("#rows");
+      tbody.innerHTML = rows.map(([team, pts], i) =>
+        `<tr>
+           <td class="rank">#${i+1}</td>
+           <td>${team}</td>
+           <td>${pts}</td>
+         </tr>`
+      ).join("");
+
+      $("#ts").textContent = now();
     }
 
-    function updateBadge(runde, closed){
-      const badge = document.getElementById("rundeBadge");
-      badge.classList.remove("open","closed");
-      badge.classList.add(closed ? "closed" : "open");
-      setBadgeText(`Runde ${runde} – ${closed ? "geschlossen" : "offen"}`);
-    }
-    function setBadgeText(text){ document.getElementById("rundeInfoText").textContent = text; }
-
-    function showWait(visible, runde){
-      const sec = document.getElementById("waitSection");
-      sec.style.display = visible ? "block" : "none";
-      if (!visible) return;
-      document.getElementById("waitHeadline").textContent =
-        (runde < 1) ? "Bitte warten, das Quiz startet gleich…" : "Runde ist noch geschlossen…";
-      document.getElementById("waitSub").textContent =
-        "Sobald die Moderation startet, öffnet sich die Eingabe automatisch.";
-    }
-    function hideForm(){ document.getElementById("antwortForm").style.display = "none"; }
-    function showForm(){ document.getElementById("antwortForm").style.display = "block"; }
-
-    function buildInputsOnce(){
-      if (inputsBuilt) { showForm(); return; }
-      const eingabenDiv = document.getElementById("eingaben");
-      eingabenDiv.innerHTML = "";
-      for (let i = 0; i < 12; i++) {
-        const row = document.createElement("div");
-        row.className = "row";
-        row.innerHTML = `
-          <label for="a${i+1}">Frage ${i+1}</label>
-          <input id="a${i+1}" name="a${i+1}" autocomplete="off" required />
-        `;
-        eingabenDiv.appendChild(row);
-      }
-      inputsBuilt = true;
-      showForm();
-    }
-
-    function clearAllInputs(){
-      // leere vorhandene Felder; wenn noch nicht gebaut, passiert nichts
-      for (let i = 1; i <= 12; i++) {
-        const el = document.getElementById("a"+i);
-        if (el) el.value = "";
-      }
-    }
-
-    function resetStatus(){
-      const s = document.getElementById("status");
-      s.textContent = "";
-      s.className = "status";
-    }
-
-    async function checkAlreadySubmitted(aktuelleRunde){
-      try{
-        const antwRes = await fetch("/data/teamAnswers.json");
-        const antwData = await antwRes.json();
-        const vorhanden = antwData[`round_${aktuelleRunde}`]?.[teamName];
-        const statusEl = document.getElementById("status");
-        const form = document.getElementById("antwortForm");
-
-        if (vorhanden) {
-          statusEl.textContent = "Du hast diese Runde bereits abgegeben.";
-          statusEl.className = "status abgegeben";
-          form.style.display = "none";
-        } else {
-          // Falls vorher abgegeben war (alte Runde): sicherstellen, dass Felder sichtbar & leer sind
-          form.style.display = "block";
-        }
-      }catch(e){ console.error(e); }
-    }
-
-    async function submitAnswers(e){
-      e.preventDefault();
-      const form = document.getElementById("antwortForm");
-      const formData = new FormData(form);
-      const answers = [];
-      for (let i = 1; i <= 12; i++) answers.push(formData.get(`a${i}`) || "");
-
-      // State frisch holen (Rennbedingungen vermeiden)
-      const res = await fetch("/current-round");
-      const data = await res.json();
-      const aktuelleRunde = parseInt(data.round);
-
-      const payload = { teamName, round: aktuelleRunde, answers };
-
-      try{
-        const response = await fetch("/submit-answers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        const statusEl = document.getElementById("status");
-
-        if (response.status === 200) {
-          statusEl.textContent = "Antworten erfolgreich abgegeben!";
-          statusEl.className = "status abgegeben";
-          form.style.display = "none";
-        } else if (response.status === 409) {
-          statusEl.textContent = "Du hast bereits abgegeben.";
-          statusEl.className = "status abgegeben";
-          form.style.display = "none";
-        } else if (response.status === 423) {
-          statusEl.textContent = "Runde beendet – nächste Runde in ein paar Minuten.";
-          statusEl.className = "status gesperrt";
-          form.style.display = "none";
-          showWait(true, aktuelleRunde);
-        } else {
-          statusEl.textContent = "Fehler beim Absenden!";
-          statusEl.className = "status";
-        }
-      }catch(err){
-        document.getElementById("status").textContent = "Serverfehler";
-      }
-    }
+    computeScores();
+    setInterval(computeScores, 5000);
   </script>
 </body>
 </html>
