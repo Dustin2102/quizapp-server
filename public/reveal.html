@@ -2,71 +2,63 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Reveal – Platz für Platz mit Feuerwerk</title>
+  <title>Reveal & Zwischenstand</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
   <style>
     :root{
-      --fg:#0f172a; --muted:#64748b; --accent:#3b82f6;
-      --bg-from:#ffffff; --bg-to:#f6f8fb; --card:#ffffff;
-      --ring: rgba(59,130,246,.18); --border:#e5e7eb; --shadow:0 6px 20px rgba(2,6,23,.08);
+      --fg:#0f172a; --muted:#64748b; --accent:#2563eb;
+      --gold:#f59e0b; --silver:#9ca3af; --bronze:#b45309;
+      --border:#e5e7eb; --card:#fff; --bg:#f6f8fb;
     }
+    *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      color:var(--fg); background:linear-gradient(180deg,var(--bg-from),var(--bg-to));
-      min-height:100dvh; overflow-x:hidden;
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--fg); background:linear-gradient(180deg,#fff,var(--bg));
+      min-height:100dvh;
     }
-    .wrap{ width:min(1100px,96vw); margin:28px auto 40px; position:relative; z-index:1; }
+    .wrap{ width:min(1200px,96vw); margin:22px auto 40px; }
     h1{ margin:0 0 6px; }
-    .sub{ color:var(--muted); margin:0 0 16px; }
+    .sub{ color:var(--muted); margin:0 0 14px; }
 
     .toolbar{
+      position:sticky; top:0; z-index:5;
       display:flex; flex-wrap:wrap; gap:10px; align-items:center;
-      background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; box-shadow:var(--shadow);
-      position:sticky; top:0; z-index:3;
+      background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px;
+      box-shadow:0 8px 20px rgba(2,6,23,.08);
     }
-    .toolbar > *{ margin-right:8px; }
-    .btn{ padding:10px 14px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; }
-    .btn:hover{ filter:saturate(1.05); }
-    .btn:disabled{ opacity:.5; cursor:not-allowed; }
-    select, input{
-      padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none;
+    .toolbar .sp{ flex:1 1 auto }
+    button, .btn{
+      padding:10px 14px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; font-weight:700;
     }
-    select:focus, input:focus{ box-shadow:0 0 0 4px var(--ring); }
+    button.primary{ background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; border:none; }
+    button.warn{ background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; border:none; }
+    label{ font-weight:600; }
+    input[type="checkbox"]{ transform: translateY(1px); }
+
     .card{
-      background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow);
-      margin-top:14px; overflow:hidden;
+      background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px;
+      box-shadow:0 8px 24px rgba(2,6,23,.08); margin-top:16px; overflow:auto;
     }
-
-    .stage{
-      display:flex; align-items:center; justify-content:center; min-height:280px;
-      background:linear-gradient(180deg,#f8fafc,#fff);
-      border:1px dashed var(--border); border-radius:14px;
-    }
-    .revealBox{
-      text-align:center; padding:28px 20px; border-radius:14px;
-      background:#fff; box-shadow:0 10px 28px rgba(2,6,23,.08); border:1px solid var(--border);
-      min-width:min(680px, 96%);
-    }
-    .pos{ font-size:44px; font-weight:900; letter-spacing:.5px; margin:0; }
-    .team{ font-size:32px; font-weight:800; margin:6px 0 0; }
-    .pts{ font-size:20px; color:#0f172a; margin:6px 0 0; }
-
-    .grid{ width:100%; overflow:auto; }
-    table{ width:100%; border-collapse:collapse; font-size:14px; }
-    thead th{
-      position:sticky; top:0; background:#f8fafc; border-bottom:1px solid var(--border);
-      text-align:left; padding:10px; font-weight:700;
-    }
-    tbody td{ border-bottom:1px solid #eef2f7; padding:9px 10px; }
+    table{ width:100%; border-collapse:collapse; font-size:16px; }
+    thead th{ position:sticky; top:0; background:#f8fafc; border-bottom:1px solid var(--border); padding:10px; text-align:left; }
+    tbody td{ border-bottom:1px solid #eef2f7; padding:10px; vertical-align:top; }
     .right{text-align:right}
-    .total{ font-weight:800; }
-    .muted{ color:var(--muted); }
 
-    /* Canvas overlay for fireworks */
+    .rank{ font-weight:900; width:60px; }
+    .rank.gold{ color:var(--gold); }
+    .rank.silver{ color:var(--silver); }
+    .rank.bronze{ color:var(--bronze); }
+
+    .pill{
+      display:inline-block; padding:.2rem .5rem; border:1px solid var(--border); border-radius:999px;
+      background:#fff; font-size:.9rem;
+    }
+
+    /* Canvas Feuerwerk */
     #fx{
-      position:fixed; inset:0; pointer-events:none; z-index:2; display:none;
+      position:fixed; inset:0; pointer-events:none; z-index:20; display:none;
     }
   </style>
 </head>
@@ -74,300 +66,229 @@
   <canvas id="fx"></canvas>
 
   <div class="wrap">
-    <h1>Platz-für-Platz Reveal</h1>
-    <p class="sub">Vom letzten Platz bis zum <strong>1.</strong> – mit Feuerwerk für den Sieger. Danach Gesamtübersicht.</p>
+    <h1>Reveal & Zwischenstand</h1>
+    <p class="sub">Volle Rangliste, optional mit Punkten pro Runde. Aktualisiert sich auf Wunsch automatisch.</p>
 
     <div class="toolbar">
-      <label>Max. Runden:
-        <select id="maxRounds">
-          <option value="6">6</option>
-          <option value="7">7</option>
-          <option value="8">8</option>
-          <option value="9">9</option>
-          <option value="10" selected>10</option>
-        </select>
+      <button class="primary" id="btnReload">Neu laden</button>
+
+      <label style="margin-left:6px;">
+        <input type="checkbox" id="cbAuto" />
+        Auto-Refresh (5s)
       </label>
 
-      <button class="btn" id="loadBtn">Daten laden</button>
-      <button class="btn" id="startBtn" disabled>Reveal starten</button>
-      <button class="btn" id="nextBtn" disabled>Weiter</button>
-      <button class="btn" id="showAllBtn" disabled>Gesamtübersicht</button>
+      <label style="margin-left:6px;">
+        <input type="checkbox" id="cbRounds" checked />
+        Punkte je Runde zeigen
+      </label>
 
-      <span id="status" class="muted"></span>
+      <button id="btnSortTotal">Nach Gesamt sortieren</button>
+      <button id="btnSortName">Nach Name sortieren</button>
+
+      <div class="sp"></div>
+
+      <button class="warn" id="btnFireworks">Feuerwerk</button>
+      <button id="btnFull">Vollbild</button>
     </div>
 
     <div class="card">
-      <div class="stage" id="stage">
-        <div class="revealBox" id="box" style="display:none">
-          <p class="pos" id="pos">Platz –</p>
-          <p class="team" id="team">—</p>
-          <p class="pts" id="pts">Gesamtpunkte: –</p>
-        </div>
-        <div id="hint" class="muted">Klicke oben auf „Daten laden“.</div>
-      </div>
-
-      <div class="grid" id="tableWrap" style="display:none; margin-top:14px;">
-        <table>
-          <thead id="thead"></thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
+      <table id="tbl">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
     </div>
   </div>
 
   <script>
-    // ===== DOM =====
-    const fx = document.getElementById('fx');
-    const statusEl = document.getElementById('status');
-    const loadBtn = document.getElementById('loadBtn');
-    const startBtn = document.getElementById('startBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const showAllBtn = document.getElementById('showAllBtn');
-    const stage = document.getElementById('stage');
-    const box = document.getElementById('box');
-    const posEl = document.getElementById('pos');
-    const teamEl = document.getElementById('team');
-    const ptsEl = document.getElementById('pts');
-    const hint = document.getElementById('hint');
-    const tableWrap = document.getElementById('tableWrap');
+    const MAX_ROUNDS = 10;
+
     const thead = document.getElementById('thead');
     const tbody = document.getElementById('tbody');
-    const maxRoundsSel = document.getElementById('maxRounds');
+    const cbAuto = document.getElementById('cbAuto');
+    const cbRounds = document.getElementById('cbRounds');
+    const btnReload = document.getElementById('btnReload');
+    const btnSortTotal = document.getElementById('btnSortTotal');
+    const btnSortName = document.getElementById('btnSortName');
+    const btnFull = document.getElementById('btnFull');
+    const btnFireworks = document.getElementById('btnFireworks');
 
-    // ===== State =====
-    let rows = [];        // [{team, sum, perRound:[...]}] sorted desc
-    let idx = null;       // reveal index from last to 0
-    let maxRounds = 10;
+    let allScores = {};
+    let allTeams = [];
+    let sortMode = 'total'; // 'total' | 'name'
+    let timer = null;
 
-    function status(t){ statusEl.textContent = t; }
-    function esc(s){ return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
-    // ===== Data loading =====
-    async function fetchJson(url, fallback){
-      try{ const r = await fetch(url); if(!r.ok) throw 0; return await r.json(); }catch{ return fallback; }
-    }
-
-    async function loadData(){
-      startBtn.disabled = true; nextBtn.disabled = true; showAllBtn.disabled = true;
-      tableWrap.style.display = 'none'; box.style.display = 'none'; hint.style.display = '';
-      status('Lade …');
-
-      maxRounds = parseInt(maxRoundsSel.value,10);
-      const [scores, teams] = await Promise.all([
-        fetchJson('/scores', {}),
-        fetchJson('/teams', [])
-      ]);
-
-      // Build set of all team names
-      const set = new Set(teams);
-      Object.keys(scores||{}).forEach(t => set.add(t));
-
-      const arr = [];
-      for(const team of Array.from(set)){
-        const perRound = [];
-        let sum = 0;
-        for(let r=1;r<=maxRounds;r++){
-          const v = Number((scores[team]||{})[`Runde ${r}`] ?? 0);
-          perRound.push(v); sum += v;
-        }
-        arr.push({ team, sum, perRound });
+    function sumTeam(team){
+      let s = 0;
+      for(let r=1;r<=MAX_ROUNDS;r++){
+        s += Number(allScores?.[team]?.[`Runde ${r}`] || 0);
       }
-      // sort desc by sum, then name asc
-      arr.sort((a,b)=> (b.sum - a.sum) || a.team.localeCompare(b.team,'de'));
-
-      rows = arr;
-      idx = rows.length - 1; // <- START AM LETZTEN PLATZ (Bugfix)
-      status(`${rows.length} Teams geladen. Bereit.`);
-      startBtn.disabled = rows.length === 0;
-      hint.textContent = rows.length ? 'Bereit. Klicke „Reveal starten“.' : 'Keine Teams gefunden.';
+      return s;
     }
 
-    // ===== Reveal flow =====
-    function startReveal(){
-      if(!rows.length) return;
-      tableWrap.style.display = 'none';
-      box.style.display = '';
-      hint.style.display = 'none';
-      startBtn.disabled = true;
-      nextBtn.disabled = false;
-      showAllBtn.disabled = true;
-      renderCurrent();
-    }
-
-    function renderCurrent(){
-      const r = rows[idx];
-      if(!r) return;
-      const place = idx + 1; // da rows 0-basiert und nach Summe sortiert (desc)
-      posEl.textContent = `Platz ${place}`;
-      teamEl.textContent = r.team;
-      ptsEl.textContent = `Gesamtpunkte: ${r.sum}`;
-      // Scroll nach oben, damit die Box immer präsent ist
-      window.scrollTo({ top: 0, behavior: 'auto' });
-    }
-
-    function nextReveal(){
-      if(idx === null) return;
-      idx--; // von unten nach oben
-      if(idx >= 0){
-        renderCurrent();
-        // Wenn wir JETZT den 1. Platz anzeigen (idx === 0), -> Feuerwerk an
-        if(idx === 0) startFireworks();
-      }else{
-        // fertig mit reveal
-        nextBtn.disabled = true;
-        showAllBtn.disabled = false;
-        stopFireworks(); // falls noch läuft
-      }
-    }
-
-    function showAll(){
-      box.style.display = 'none';
-      buildFullTable();
-      tableWrap.style.display = '';
-      showAllBtn.disabled = true;
-    }
-
-    // ===== Full table =====
-    function buildFullTable(){
+    function buildHead(){
       thead.innerHTML = '';
-      tbody.innerHTML = '';
-
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <th style="width:64px;text-align:right">#</th>
-        <th>Team</th>
-        <th class="right">Gesamt</th>
-      `;
-      for(let r=1;r<=maxRounds;r++){
-        const th = document.createElement('th'); th.className='right'; th.textContent = `R${r}`; tr.appendChild(th);
+      const thRank = document.createElement('th'); thRank.textContent = '#'; tr.appendChild(thRank);
+      const thTeam = document.createElement('th'); thTeam.textContent = 'Team'; tr.appendChild(thTeam);
+      const thTotal = document.createElement('th'); thTotal.textContent = 'Gesamt'; thTotal.className='right'; tr.appendChild(thTotal);
+      if (cbRounds.checked){
+        for(let r=1;r<=MAX_ROUNDS;r++){
+          const th = document.createElement('th'); th.textContent = `R ${r}`; th.className='right';
+          tr.appendChild(th);
+        }
       }
       thead.appendChild(tr);
+    }
 
-      let place = 1;
-      for(const row of rows){
-        const trb = document.createElement('tr');
-        trb.innerHTML = `
-          <td class="right">${place++}</td>
-          <td>${esc(row.team)}</td>
-          <td class="right total">${row.sum}</td>
-        `;
-        for(const v of row.perRound){
-          const td = document.createElement('td'); td.className='right'; td.textContent = v; trb.appendChild(td);
+    function render(){
+      buildHead();
+      // Basismenge Teams: bekannte Teams + Teams mit Scores
+      const set = new Set([...allTeams, ...Object.keys(allScores||{})]);
+      let rows = Array.from(set);
+
+      if (sortMode === 'name'){
+        rows.sort((a,b)=>a.localeCompare(b,'de'));
+      } else {
+        rows.sort((a,b)=> sumTeam(b) - sumTeam(a) || a.localeCompare(b,'de'));
+      }
+
+      // Plätze vergeben (mit Gleichständen)
+      const totals = rows.map(t => ({team:t, total: sumTeam(t)}));
+      const places = new Map();
+      let prev = null, place = 0;
+      totals.forEach((x, idx) => {
+        if (prev === null || x.total < prev) place = idx + 1;
+        places.set(x.team, place);
+        prev = x.total;
+      });
+
+      tbody.innerHTML = '';
+      for(const team of rows){
+        const tr = document.createElement('tr');
+
+        const rank = places.get(team);
+        const tdRank = document.createElement('td');
+        tdRank.className = 'rank ' + (rank===1?'gold':rank===2?'silver':rank===3?'bronze':'');
+        tdRank.textContent = rank;
+        tr.appendChild(tdRank);
+
+        const tdTeam = document.createElement('td'); tdTeam.textContent = team; tr.appendChild(tdTeam);
+
+        const total = sumTeam(team);
+        const tdTotal = document.createElement('td'); tdTotal.className='right'; tdTotal.innerHTML = `<b>${total}</b>`;
+        tr.appendChild(tdTotal);
+
+        if (cbRounds.checked){
+          for(let r=1;r<=MAX_ROUNDS;r++){
+            const td = document.createElement('td'); td.className='right';
+            const v = Number(allScores?.[team]?.[`Runde ${r}`] || 0);
+            td.textContent = v ? v : '–';
+            tr.appendChild(td);
+          }
         }
-        tbody.appendChild(trb);
+
+        tbody.appendChild(tr);
       }
     }
 
-    // ===== Fireworks (simple canvas) =====
-    let fxCtx, fxId = null, particles = [];
-
-    function resizeFx(){
-      fx.width = window.innerWidth;
-      fx.height = Math.max(window.innerHeight, document.body.scrollHeight);
-      fxCtx = fx.getContext('2d');
-    }
-    window.addEventListener('resize', ()=>{ if(fx.style.display!=='none'){ resizeFx(); } });
-
-    function startFireworks(){
-      fx.style.display = 'block';
-      resizeFx();
-      spawnBurst(); // sofort ein paar
-      if(fxId) cancelAnimationFrame(fxId);
-      fxLoop();
-    }
-    function stopFireworks(){
-      fx.style.display = 'none';
-      if(fxId) cancelAnimationFrame(fxId);
-      fxId = null;
-      particles = [];
+    async function loadAll(){
+      const [teams, scores] = await Promise.all([
+        fetch('/teams').then(r=>r.json()).catch(()=>[]),
+        fetch('/scores').then(r=>r.json()).catch(()=>({}))
+      ]);
+      allTeams = Array.isArray(teams) ? teams : [];
+      allScores = (scores && typeof scores==='object') ? scores : {};
     }
 
-    function spawnBurst(){
-      const w = fx.width, h = fx.height;
-      const x = w*0.5, y = h*0.25; // zentral oben
-      const count = 120;
-      for(let i=0;i<count;i++){
-        const angle = (Math.PI*2) * (i/count);
-        const speed = 2 + Math.random()*3.5;
-        particles.push({
-          x, y,
-          vx: Math.cos(angle)*speed,
-          vy: Math.sin(angle)*speed - 1.2, // leicht nach oben
-          life: 60 + Math.random()*40,
-          age: 0
-        });
-      }
-      // nochmal kleine Offsets
-      setTimeout(()=>{ if(fx.style.display!=='none') spawnRandomBurst(); }, 700);
-      setTimeout(()=>{ if(fx.style.display!=='none') spawnRandomBurst(); }, 1400);
-    }
-    function spawnRandomBurst(){
-      const w = fx.width, h = fx.height;
-      const x = (0.2 + Math.random()*0.6)*w;
-      const y = (0.15 + Math.random()*0.35)*h;
-      const count = 90;
-      for(let i=0;i<count;i++){
-        const angle = (Math.PI*2) * Math.random();
-        const speed = 2 + Math.random()*4;
-        particles.push({
-          x, y,
-          vx: Math.cos(angle)*speed,
-          vy: Math.sin(angle)*speed - .8,
-          life: 50 + Math.random()*40,
-          age: 0
-        });
+    async function refresh(){
+      clearTimeout(timer);
+      await loadAll();
+      render();
+      if (cbAuto.checked){
+        timer = setTimeout(refresh, 5000);
       }
     }
 
-    function fxLoop(){
-      fxId = requestAnimationFrame(fxLoop);
-      if(!fxCtx) return;
-      fxCtx.clearRect(0,0,fx.width,fx.height);
-      fxCtx.globalCompositeOperation = 'lighter';
-
-      for(let i=particles.length-1;i>=0;i--){
-        const p = particles[i];
-        p.age++;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.03; // gravity
-        const alpha = Math.max(0, 1 - p.age/p.life);
-        if(alpha <= 0){
-          particles.splice(i,1); continue;
-        }
-        fxCtx.globalAlpha = alpha;
-        fxCtx.beginPath();
-        fxCtx.arc(p.x, p.y, 2, 0, Math.PI*2);
-        fxCtx.fillStyle = '#'+((Math.random()*0xFFFFFF)|0).toString(16).padStart(6,'0');
-        fxCtx.fill();
-      }
-
-      // Wenn kaum noch Partikel da sind, wieder neuen Burst starten
-      if(particles.length < 60){
-        spawnRandomBurst();
-      }
-    }
-
-    // ===== Events =====
-    loadBtn.addEventListener('click', loadData);
-    startBtn.addEventListener('click', startReveal);
-    nextBtn.addEventListener('click', nextReveal);
-    showAllBtn.addEventListener('click', showAll);
-    maxRoundsSel.addEventListener('change', ()=>{
-      // Wenn Runden geändert wurden, bitte neu laden
-      status('Runden geändert – bitte „Daten laden“.');
-      startBtn.disabled = true; nextBtn.disabled = true; showAllBtn.disabled = true;
+    // Fullscreen
+    btnFull.addEventListener('click', ()=>{
+      const el = document.documentElement;
+      if (!document.fullscreenElement) el.requestFullscreen?.();
+      else document.exitFullscreen?.();
     });
 
-    // Init: versuche, aktuelle Runde zu lesen → Max Runden passend setzen
-    (async function init(){
-      try{
-        const cr = await fetch('/current-round').then(r=>r.json());
-        const r = parseInt(cr.round||6,10);
-        if (r>6) maxRoundsSel.value = String(Math.min(10, Math.max(6, r)));
-      }catch{}
-      status('Bereit. Wähle „Max. Runden“ und klicke „Daten laden“.');
-    })();
+    // Sortierer
+    btnSortTotal.addEventListener('click', ()=>{ sortMode='total'; render(); });
+    btnSortName.addEventListener('click', ()=>{ sortMode='name'; render(); });
+
+    cbRounds.addEventListener('change', render);
+    cbAuto.addEventListener('change', refresh);
+    btnReload.addEventListener('click', refresh);
+
+    // ========= Feuerwerk =========
+    const fx = document.getElementById('fx');
+    const ctx = fx.getContext('2d');
+    let fwTimer = null, particles = [];
+
+    function resizeCanvas(){
+      fx.width = window.innerWidth;
+      fx.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function rand(min,max){ return Math.random()*(max-min)+min; }
+
+    function burst(x,y,colors,amount=80){
+      for(let i=0;i<amount;i++){
+        const angle = Math.random()*Math.PI*2;
+        const speed = rand(2,6);
+        particles.push({
+          x,y,
+          vx: Math.cos(angle)*speed,
+          vy: Math.sin(angle)*speed,
+          life: rand(60,120),
+          color: colors[(Math.random()*colors.length)|0],
+          size: rand(2,4),
+          gravity: 0.05,
+          drag: 0.99
+        });
+      }
+    }
+
+    function step(){
+      ctx.clearRect(0,0,fx.width,fx.height);
+      particles.forEach(p=>{
+        p.vx *= p.drag;
+        p.vy = p.vy*p.drag + p.gravity;
+        p.x += p.vx; p.y += p.vy;
+        p.life--;
+        ctx.globalAlpha = Math.max(p.life/120, 0);
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+      });
+      particles = particles.filter(p=>p.life>0 && p.y<fx.height+20);
+      if (particles.length>0 || fwTimer){ requestAnimationFrame(step); }
+    }
+
+    function fireworkShow(durationMs=5000){
+      fx.style.display='block';
+      const colors = ['#fbbf24','#60a5fa','#f472b6','#34d399','#f87171','#a78bfa'];
+      const spawn = ()=> {
+        burst(rand(0.2*fx.width,0.8*fx.width), rand(0.2*fx.height,0.5*fx.height), colors, 100);
+      };
+      spawn();
+      fwTimer = setInterval(spawn, 700);
+      step();
+      setTimeout(()=>{
+        clearInterval(fwTimer); fwTimer=null;
+        setTimeout(()=>{ fx.style.display='none'; }, 1600);
+      }, durationMs);
+    }
+
+    btnFireworks.addEventListener('click', ()=> fireworkShow(6000));
+
+    // Init
+    refresh();
   </script>
 </body>
 </html>

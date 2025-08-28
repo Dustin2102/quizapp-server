@@ -117,7 +117,11 @@
   </div>
 
   <script>
-    // ===== Rejoin-Logik (NEU): Token + Heartbeat =====
+    // ===== Einstellungen =====
+    const MAX_ROUNDS = 10;                // bis zu 10 Runden
+    const END_ROUND_VALUE = MAX_ROUNDS+1; // „X“ (Ende) -> finished.html
+
+    // ===== Rejoin-Logik: Token + Heartbeat =====
     const LS_TEAM = "teamName";
     const LS_TOKEN = "teamToken";
 
@@ -150,9 +154,9 @@
       } catch { return null; }
     }
 
-    async function heartbeatLoop() {
+    async function heartbeatOnce() {
       const token = localStorage.getItem(LS_TOKEN);
-      if (!token) return; // erst aktiv, wenn wir ein Token haben
+      if (!token) return;
       const hidden = document.visibilityState === "hidden";
       try {
         await fetch("/teams/heartbeat", {
@@ -162,35 +166,35 @@
         });
       } catch {}
     }
-    document.addEventListener("visibilitychange", heartbeatLoop);
+    document.addEventListener("visibilitychange", heartbeatOnce);
 
-    // ===== Bestehende App-Logik (leicht angepasst) =====
+    // ===== App-Identity =====
     let teamName = localStorage.getItem(LS_TEAM);
 
-    // NEU: Rejoin-Pfade – falls kein teamName, aber Token vorhanden -> Rejoin
     (async function initIdentity(){
       if (!teamName) {
         const rejoined = await tryRejoinByToken();
         if (rejoined) {
           teamName = rejoined;
         } else {
-          // Kein Rejoin möglich -> zurück zur Startseite
           window.location.href = "start.html";
           return;
         }
       }
-      // teamName existiert -> sicherstellen, dass es ein Token gibt
       if (!localStorage.getItem(LS_TOKEN)) {
         await ensureTokenForTeam(teamName);
       }
       document.getElementById("teamBadge").textContent = "Team: " + teamName;
-      // Heartbeat starten
-      heartbeatLoop();
-      setInterval(heartbeatLoop, 15000); // alle 15s
-      // Danach normalen Ablauf starten
+
+      // Heartbeat starten (alle 5s + bei Sichtbarkeitswechsel)
+      heartbeatOnce();
+      setInterval(heartbeatOnce, 5000);
+
+      // App starten
       bootApp();
     })();
 
+    // ===== Bestehende App-Logik =====
     let inputsBuilt = false;
     let lastRound = -1;
     let lastClosed = null;
@@ -204,32 +208,34 @@
       try{
         const res = await fetch("/current-round");
         const data = await res.json();
-        const aktuelleRunde = parseInt(data.round);
+        const aktuelleRunde = parseInt(data.round, 10);
         const closed = !!data.closed;
 
-        // 🔄 Erkennung: Rundenwechsel oder geschlossen -> offen
         const roundChanged = (lastRound !== aktuelleRunde);
         const reopened = (lastClosed === true && closed === false && lastRound === aktuelleRunde);
 
         if (roundChanged || reopened) {
-          clearAllInputs();                  // ✅ Felder leeren
-          resetStatus();                     // Status leeren
+          clearAllInputs();
+          resetStatus();
         }
         lastRound = aktuelleRunde;
         lastClosed = closed;
 
-        if (aktuelleRunde >= 7) { window.location.href = "finished.html"; return; }
+        // Ende (X): alles > MAX_ROUNDS
+        if (aktuelleRunde > MAX_ROUNDS) { window.location.href = "finished.html"; return; }
 
         updateBadge(aktuelleRunde, closed);
 
-        if (aktuelleRunde < 1 || closed) {
-          showWait(true, aktuelleRunde);
+        // Start (0) oder geschlossen/noch nicht gestartet
+        if (aktuelleRunde === 0 || aktuelleRunde < 1 || closed) {
+          showWait(true, aktuelleRunde, closed);
           hideForm();
           return;
         }
 
+        // Eingabe möglich (1..MAX_ROUNDS, offen)
         showWait(false);
-        buildInputsOnce();                   // baut falls nötig
+        buildInputsOnce();
         await checkAlreadySubmitted(aktuelleRunde);
       }catch(e){
         console.error(e);
@@ -241,18 +247,29 @@
       const badge = document.getElementById("rundeBadge");
       badge.classList.remove("open","closed");
       badge.classList.add(closed ? "closed" : "open");
-      setBadgeText(`Runde ${runde} – ${closed ? "geschlossen" : "offen"}`);
+      if (runde === 0) {
+        setBadgeText(`Start – ${closed ? "geschlossen" : "offen"}`);
+      } else {
+        setBadgeText(`Runde ${runde} – ${closed ? "geschlossen" : "offen"}`);
+      }
     }
     function setBadgeText(text){ document.getElementById("rundeInfoText").textContent = text; }
 
-    function showWait(visible, runde){
+    function showWait(visible, runde, closed){
       const sec = document.getElementById("waitSection");
       sec.style.display = visible ? "block" : "none";
       if (!visible) return;
-      document.getElementById("waitHeadline").textContent =
-        (runde < 1) ? "Bitte warten, das Quiz startet gleich…" : "Runde ist noch geschlossen…";
-      document.getElementById("waitSub").textContent =
-        "Sobald die Moderation startet, öffnet sich die Eingabe automatisch.";
+
+      if (runde === 0) {
+        document.getElementById("waitHeadline").textContent = "Willkommen zum Quiz!";
+        document.getElementById("waitSub").textContent = "Bitte warte, bis die Moderation das Quiz startet. Der Bildschirm aktualisiert sich automatisch.";
+      } else if (runde < 1 || closed) {
+        document.getElementById("waitHeadline").textContent = "Runde ist noch geschlossen…";
+        document.getElementById("waitSub").textContent = "Sobald die Moderation öffnet, erscheint die Eingabe automatisch.";
+      } else {
+        document.getElementById("waitHeadline").textContent = "Bitte warten…";
+        document.getElementById("waitSub").textContent = "Gleich geht es weiter.";
+      }
     }
     function hideForm(){ document.getElementById("antwortForm").style.display = "none"; }
     function showForm(){ document.getElementById("antwortForm").style.display = "block"; }
@@ -275,7 +292,6 @@
     }
 
     function clearAllInputs(){
-      // leere vorhandene Felder; wenn noch nicht gebaut, passiert nichts
       for (let i = 1; i <= 12; i++) {
         const el = document.getElementById("a"+i);
         if (el) el.value = "";
@@ -301,7 +317,6 @@
           statusEl.className = "status abgegeben";
           form.style.display = "none";
         } else {
-          // Falls vorher abgegeben war (alte Runde): sicherstellen, dass Felder sichtbar & leer sind
           form.style.display = "block";
         }
       }catch(e){ console.error(e); }
@@ -314,10 +329,10 @@
       const answers = [];
       for (let i = 1; i <= 12; i++) answers.push(formData.get(`a${i}`) || "");
 
-      // State frisch holen (Rennbedingungen vermeiden)
+      // State frisch holen
       const res = await fetch("/current-round");
       const data = await res.json();
-      const aktuelleRunde = parseInt(data.round);
+      const aktuelleRunde = parseInt(data.round, 10);
 
       const payload = { teamName, round: aktuelleRunde, answers };
 
@@ -342,7 +357,7 @@
           statusEl.textContent = "Runde beendet – nächste Runde in ein paar Minuten.";
           statusEl.className = "status gesperrt";
           form.style.display = "none";
-          showWait(true, aktuelleRunde);
+          showWait(true, aktuelleRunde, true);
         } else {
           statusEl.textContent = "Fehler beim Absenden!";
           statusEl.className = "status";
