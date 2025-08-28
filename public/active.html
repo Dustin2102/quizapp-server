@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Aktive Teams</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;background:#f6f8fb;margin:0;padding:20px;}
+    h1{margin-top:0}
+    table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.05);}
+    th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;}
+    th{background:#f1f5f9}
+    .ok{color:#16a34a;font-weight:700}
+    .no{color:#dc2626;font-weight:700}
+    .muted{color:#6b7280}
+  </style>
+</head>
+<body>
+  <h1>Aktive Teams</h1>
+  <p>Zeigt, wer gerade auf der Antwortseite ist. Aktualisiert sich alle 5 Sekunden.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Team</th>
+        <th>Status</th>
+        <th>Zuletzt gesehen</th>
+        <th>Tab</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <script>
+    const tbody=document.getElementById('tbody');
+    async function load(){
+      try{
+        const res=await fetch('/admin/active-teams');
+        if(!res.ok){tbody.innerHTML='<tr><td colspan=4>Fehler: '+res.status+'</td></tr>';return;}
+        const data=await res.json();
+        tbody.innerHTML='';
+        if(data.length===0){
+          tbody.innerHTML='<tr><td colspan=4 class="muted">Keine Teams</td></tr>';
+          return;
+        }
+        data.sort((a,b)=>a.teamName.localeCompare(b.teamName,'de'));
+        for(const t of data){
+          const tr=document.createElement('tr');
+          tr.innerHTML=`
+            <td>${t.teamName}</td>
+            <td>${t.active?'<span class="ok">aktiv</span>':'<span class="no">abwesend</span>'}</td>
+            <td>${t.agoSec}s ago</td>
+            <td>${t.pageHidden?'<span class="no">versteckt</span>':'<span class="ok">sichtbar</span>'}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }catch(e){
+        tbody.innerHTML='<tr><td colspan=4>Fehler beim Laden</td></tr>';
+      }
+    }
+    load(); setInterval(load,5000);
+  </script>
+</body>
+</html>

@@ -2,317 +2,226 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin Panel</title>
+  <title>Admin-Panel – Auswertung & Steuerung</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
   <style>
     :root{
-      --ok:#c8f7c5; --no:#f8d7da; --line:#bbb; --muted:#666;
-      --accent:#00a86b; --warn:#ff9800; --danger:#dc3545;
+      --fg:#0f172a; --muted:#64748b; --accent:#3b82f6;
+      --accent-2:#22c55e; --accent-3:#ef4444;
+      --bg-from:#ffffff; --bg-to:#f6f8fb; --card:#ffffff;
+      --ring: rgba(59,130,246,.18); --border:#e5e7eb; --shadow:0 6px 20px rgba(2,6,23,.08);
     }
-    *{box-sizing:border-box}
-    body{font-family: Arial, sans-serif; margin:20px}
-    h1{margin:0 0 10px}
-    h2{margin:24px 0 8px}
-    button{margin:4px; padding:.6rem 1.0rem; cursor:pointer; border:none; border-radius:8px}
-    .btn{background:#e9ecef}
-    .btn.primary{background:var(--accent); color:#fff}
-    .btn.warn{background:var(--warn); color:#fff}
-    .btn.danger{background:var(--danger); color:#fff}
-    select{padding:.5rem .7rem; border:1px solid #ccc; border-radius:8px}
-
-    #qrButton, #leaderButton, #revealButton{
-      position:fixed; top:10px; right:10px;
-      background:#008000; color:#fff; border:none; padding:.6rem 1.2rem;
-      border-radius:8px; cursor:pointer; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,.2)
+    html,body{height:100%}
+    body{
+      margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--fg); background:linear-gradient(180deg,var(--bg-from),var(--bg-to));
+      min-height:100dvh;
     }
-    #qrButton{ right:10px; }
-    #leaderButton{ right:142px; background:#005bbb; }
-    #revealButton{ right:300px; background:#6f42c1; }
-    #qrButton:hover{background:#006400}
-    #leaderButton:hover{background:#0047a3}
-    #revealButton:hover{background:#5a35a0}
+    .wrap{ width:min(1300px,96vw); margin:28px auto 40px; }
+    h1{ margin:0 0 6px; }
+    .sub{ color:var(--muted); margin:0 0 16px; }
 
-    #teamCounter{
-      position:fixed; top:56px; right:10px; z-index:2;
-      font-weight:bold; background:#f0f0f0; padding:.3rem .6rem;
-      border-radius:6px; border:1px solid #ccc;
+    .toolbar{
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+      background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; box-shadow:var(--shadow);
+      position:sticky; top:0; z-index:2;
     }
-
-    table{border-collapse:collapse; margin:12px 0; width:100%; max-width:1200px}
-    th,td{border:1px solid var(--line); padding:8px; text-align:center}
-    th{background:#f0f0f0; position:sticky; top:0}
-    .ok{background:var(--ok)} .no{background:var(--no); cursor:pointer}
-    .hint{font-size:.92rem; color:var(--muted); margin:6px 0 10px}
-
-    .round-header td{
-      background:#eef7ff; font-weight:bold; text-align:left; border-top:3px solid #89bfff;
+    .toolbar > *{ margin-right:8px; }
+    select, input, button{
+      padding:8px 10px; border:1px solid var(--border); border-radius:8px; outline:none;
     }
-    .answers-input{width:100%; max-width:520px; padding:.4rem; border:1px solid #ccc; border-radius:6px; text-align:left}
-
-    .flex{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap}
-    .spacer{flex:1}
+    select:focus, input:focus{ box-shadow:0 0 0 4px var(--ring); }
+    .btn{ cursor:pointer; background:#fff; }
+    .btn:hover{ filter:saturate(1.05); }
+    .btn.primary{ background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; border:none; font-weight:700; }
+    .btn.primary:hover{ filter:saturate(1.05); }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow); margin-top:16px; }
+    table{ width:100%; border-collapse:collapse; font-size:14px; }
+    thead th{ background:#f1f5f9; border-bottom:1px solid var(--border); padding:8px; }
+    tbody td{ border-bottom:1px solid #eee; padding:6px 8px; }
+    .ok{ color:#16a34a; font-weight:700 }
+    .no{ color:#dc2626; font-weight:700 }
+    .muted{ color:var(--muted); }
+    .right{text-align:right}
+    .badge{ display:inline-flex; align-items:center; gap:.3rem; padding:.25rem .6rem; border:1px solid var(--border); border-radius:999px; }
+    .open{ background:#f0fdf4; border-color:#bbf7d0; color:#14532d; }
+    .closed{ background:#fef2f2; border-color:#fecaca; color:#7f1d1d; }
+    .input-small{width:60px;text-align:center}
   </style>
 </head>
 <body>
-  <h1>Admin Panel</h1>
+  <div class="wrap">
+    <h1>Admin-Panel</h1>
+    <p class="sub">Runden steuern, Antworten prüfen, Punkte vergeben und verwalten.</p>
 
-  <!-- NEU: zusätzlicher Button für das Reveal -->
-  <button id="revealButton" onclick="window.open('/reveal.html','_blank')">Platz-für-Platz</button>
-  <button id="leaderButton" onclick="window.open('/leaderboard.html','_blank')">Auswertung starten</button>
-  <button id="qrButton" onclick="window.open('/qr.html','_blank')">QR-Code</button>
-  <div id="teamCounter">Teams: 0</div>
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <label>Runde:
+        <select id="roundSel"></select>
+      </label>
+      <label>Status:
+        <select id="statusSel">
+          <option value="open">offen</option>
+          <option value="closed">geschlossen</option>
+        </select>
+      </label>
+      <button class="btn primary" id="applyRoundBtn">Übernehmen</button>
+      <span class="badge" id="liveBadge">–</span>
 
-  <h2>Rundensteuerung</h2>
-  <div class="flex">
-    <div>Aktuell: <strong id="aktuelleRunde">0</strong> <span id="rundenStatus" style="color:#666"></span></div>
-    <div class="spacer"></div>
-    <label for="roundPicker">Ziel-Runde:</label>
-    <select id="roundPicker">
-      <option value="0">0 – Warten</option>
-      <option value="1">1 – Runde 1</option>
-      <option value="2">2 – Runde 2</option>
-      <option value="3">3 – Runde 3</option>
-      <option value="4">4 – Runde 4</option>
-      <option value="5">5 – Runde 5</option>
-      <option value="6">6 – Runde 6</option>
-      <option value="7">7 – Ende</option>
-    </select>
-    <button class="btn primary" onclick="setSelectedRoundOpen()">Setzen & öffnen</button>
-    <button class="btn warn" onclick="closeCurrent()">Nur schließen</button>
-    <button class="btn danger" onclick="resetEverything()">Alles zurücksetzen</button>
+      <a class="btn" href="results.html" target="_blank">Antworten</a>
+      <a class="btn" href="reveal.html" target="_blank">Reveal</a>
+      <a class="btn" href="leaderboard.html" target="_blank">Leaderboard</a>
+      <a class="btn" href="active.html" target="_blank">Aktive Teams</a>
+      <a class="btn" href="teams.html" target="_blank">Teams verwalten</a>
+    </div>
+
+    <!-- Korrekte Antworten -->
+    <div class="card">
+      <h2>Korrekte Antworten</h2>
+      <div id="correctWrap"></div>
+      <button class="btn primary" id="saveCorrectBtn">Speichern</button>
+    </div>
+
+    <!-- Abgaben -->
+    <div class="card">
+      <h2>Abgaben der Teams</h2>
+      <div id="answersWrap"></div>
+    </div>
+
+    <!-- Punkteübersicht -->
+    <div class="card">
+      <h2>Punkteübersicht (alle Runden)</h2>
+      <table>
+        <thead><tr><th>Team</th><th>Gesamt</th><th colspan="10">Runden</th><th>Zusatz</th></tr></thead>
+        <tbody id="scoresBody"></tbody>
+      </table>
+      <button class="btn primary" id="saveScoresBtn">Punkte speichern</button>
+    </div>
   </div>
 
-  <h2>Punktetabelle (Gesamt)</h2>
-  <div id="punkteTabelle"></div>
-
-  <h2>Auswertung (aktuelle Runde)</h2>
-  <p class="hint">Auf eine <strong>rote Zelle</strong> klicken, um diese Schreibweise als <em>korrekt</em> zu übernehmen – die Tabelle rechnet sofort neu.</p>
-  <div id="auswertung"></div>
-
-  <h2>Richtige Antworten – Übersicht & Bearbeitung</h2>
-  <p class="hint">Mehrere Varianten mit <code>,</code>/<code>;</code>/<code>|</code> trennen (z. B. <em>Berlin; Bärlin | Hauptstadt</em>).</p>
-  <div id="answersGrid"></div>
-
-  <h2>Teams</h2>
-  <ul id="teamList"></ul>
-
   <script>
-    let state = { round: 0, closed: false };
+    const MAX_ROUNDS = 10;
+    const roundSel=document.getElementById('roundSel');
+    const statusSel=document.getElementById('statusSel');
+    const liveBadge=document.getElementById('liveBadge');
+    const correctWrap=document.getElementById('correctWrap');
+    const answersWrap=document.getElementById('answersWrap');
+    const scoresBody=document.getElementById('scoresBody');
 
-    const b64enc = (str) => btoa(unescape(encodeURIComponent(str)));
-    const b64dec = (b64) => decodeURIComponent(escape(atob(b64)));
+    let currentRound=0,closed=false;
+    let correctAnswers={}, teamAnswers={}, teams=[], scores={};
 
-    async function getJSON(url){
-      const res = await fetch(url + (url.includes('?')?'&':'?') + '_=' + Date.now());
-      if(!res.ok) throw new Error(url + ' -> ' + res.status);
-      return res.json();
-    }
-    async function postJSON(url, body){
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify(body)
-      });
-      if(!res.ok) throw new Error(url + ' -> ' + res.status);
-      return res;
+    // init round options
+    for(let r=1;r<=MAX_ROUNDS;r++){
+      const o=document.createElement('option');
+      o.value=r; o.textContent='Runde '+r;
+      roundSel.appendChild(o);
     }
 
-    const normalizeCorrect = (val) => {
-      if (Array.isArray(val)) return val.map(v => String(v).trim()).filter(Boolean);
-      if (typeof val === "string") return val.split(/[;,|]/g).map(s => s.trim()).filter(Boolean);
-      return [];
-    };
-    const escapeAttr = (v) => String(v).replace(/"/g, "&quot;");
+    async function refresh(){
+      const r=await fetch('/current-round').then(r=>r.json());
+      currentRound=r.round; closed=r.closed;
+      roundSel.value=currentRound;
+      statusSel.value=closed?'closed':'open';
+      liveBadge.textContent=`Runde ${currentRound} – ${closed?'geschlossen':'offen'}`;
 
-    async function fetchRound() {
-      const data = await getJSON("/current-round");
-      state.round = +data.round || 0; state.closed = !!data.closed;
-      document.getElementById("aktuelleRunde").textContent = state.round;
-      document.getElementById("rundenStatus").textContent = state.closed ? "(geschlossen)" : "(offen)";
-      document.getElementById("roundPicker").value = String(state.round);
-    }
-    async function setRound(round, closed) {
-      await postJSON("/current-round", { round, closed: !!closed });
-      await fetchRound();
-      await lightRefresh();
-    }
-    function setSelectedRoundOpen() {
-      const r = parseInt(document.getElementById("roundPicker").value);
-      setRound(r, false);
-    }
-    function closeCurrent() { setRound(state.round, true); }
+      correctAnswers=await fetch('/correct-answers').then(r=>r.json());
+      teamAnswers=await fetch('/data/teamAnswers.json').then(r=>r.json());
+      teams=await fetch('/teams').then(r=>r.json());
+      scores=await fetch('/scores').then(r=>r.json());
 
-    async function resetEverything() {
-      const ok = confirm("Wirklich ALLES zurücksetzen? (Teams, Antworten, Punkte; Runde → 0)");
-      if (!ok) return;
-      await postJSON("/reset-teams", {});
-      await fetchRound();
-      await heavyRefresh();
-      alert("Zurückgesetzt.");
+      renderCorrect(); renderAnswers(); renderScores();
     }
 
-    async function loadScores() {
-      const scores = await getJSON("/scores");
-      const teams  = await getJSON("/teams");
-      document.getElementById("teamCounter").textContent = "Teams: " + teams.length;
-
-      function totalFor(team) {
-        const s = scores[team];
-        if (typeof s === "number") return s;
-        if (s && typeof s === "object") return Object.values(s).reduce((a,b)=>a+(+b||0),0);
-        return 0;
+    function renderCorrect(){
+      const r=+roundSel.value;
+      const data=correctAnswers[`round_${r}`]||{};
+      correctWrap.innerHTML='';
+      for(let i=1;i<=12;i++){
+        const inp=document.createElement('input');
+        inp.value=data[`question_${i}`]||'';
+        inp.dataset.q=i;
+        correctWrap.appendChild(document.createTextNode('Frage '+i+': '));
+        correctWrap.appendChild(inp);
+        correctWrap.appendChild(document.createElement('br'));
       }
-      const rows = teams.map(t => ({ team: t, sum: totalFor(t) }))
-                        .sort((a,b)=>b.sum-a.sum);
-
-      let html = "<table><tr><th>Platz</th><th>Team</th><th>Punkte</th></tr>";
-      rows.forEach((r,i)=> html += `<tr><td>${i+1}</td><td>${r.team}</td><td>${r.sum}</td></tr>`);
-      html += "</table>";
-      document.getElementById("punkteTabelle").innerHTML = html;
-
-      const ul = document.getElementById("teamList"); ul.innerHTML="";
-      teams.forEach(t => { const li=document.createElement("li"); li.textContent=t; ul.appendChild(li); });
     }
 
-    function getCorrectListForQuestion(corrRound, qIndex) {
-      if (!corrRound) return [];
-      const objVal = corrRound[`question_${qIndex}`];
-      if (typeof objVal !== "undefined") return normalizeCorrect(objVal);
-      const arrVal = corrRound[qIndex - 1];
-      return normalizeCorrect(arrVal);
+    async function saveCorrect(){
+      const r=+roundSel.value;
+      const obj={};
+      const inps=correctWrap.querySelectorAll('input');
+      inps.forEach(inp=>obj[`question_${inp.dataset.q}`]=inp.value);
+      await fetch('/save-correct-answers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({round:r,correctAnswers:obj})});
+      alert('Korrekte Antworten gespeichert.');
     }
 
-    async function loadEvaluation() {
-      await fetchRound();
-      const r = state.round, target = document.getElementById("auswertung");
-      if (r < 1 || r > 6) { target.innerHTML = "<p style='color:#666'>Keine Auswertung verfügbar.</p>"; return; }
-
-      const ansData  = await getJSON("/data/teamAnswers.json");
-      const corrData = await getJSON("/correct-answers");
-      const scoresData = await getJSON("/scores");
-
-      const rAnswers = ansData[`round_${r}`] || {};
-      const corrRound = corrData[`round_${r}`] || {};
-
-      let html = `<table><tr><th>Team</th>${Array.from({length:12},(_,i)=>`<th>${i+1}</th>`).join('')}<th>Zeit</th></tr>`;
-      const punkteMap = {};
-
-      for (const team in rAnswers) {
-        const entry = rAnswers[team];
-        const a = entry.answers || [];
-        const ts = new Date(entry.timestamp).toLocaleString("de-DE");
-        let punkte=0, row=`<td>${team}</td>`;
-
-        for (let i = 0; i < 12; i++) {
-          const ua = (a[i] || "").toString().trim();
-          const list = getCorrectListForQuestion(corrRound, i+1);
-          const isOk = list.some(c => c.toLowerCase().trim() === ua.toLowerCase().trim());
-          if (isOk) punkte++;
-
-          const uaB64 = b64enc(ua);
-          row += `<td class="${isOk?'ok':'no'}"
-                      data-round="${r}" data-q="${i+1}" data-ua="${uaB64}"
-                      title="${isOk?'':'Klicken: Schreibweise als korrekt übernehmen'}">
-                   ${ua || "&nbsp;"}<br>${isOk?'✅':'❌'}
-                  </td>`;
+    function renderAnswers(){
+      const r=+roundSel.value;
+      const data=teamAnswers[`round_${r}`]||{};
+      answersWrap.innerHTML='';
+      for(const t of teams){
+        const entry=data[t];
+        const div=document.createElement('div');
+        div.style.marginBottom='8px';
+        div.innerHTML='<b>'+t+':</b> ';
+        if(!entry){div.innerHTML+='<span class="muted">keine Abgabe</span>';}
+        else{
+          entry.answers.forEach((a,i)=>{
+            const correct=(correctAnswers[`round_${r}`]||{})[`question_${i+1}`]||'';
+            const good=correct.split(';').map(x=>x.trim().toLowerCase()).includes(a.trim().toLowerCase());
+            div.innerHTML+=`<span class="chip ${good?'green':'red'} q">${i+1}: ${a}</span> `;
+          });
         }
-        row += `<td>${ts}</td>`;
-        html += `<tr>${row}</tr>`;
-        punkteMap[team] = punkte;
+        answersWrap.appendChild(div);
       }
-      html += "</table>";
-      target.innerHTML = html;
-
-      target.querySelectorAll("td.no").forEach(td=>{
-        td.addEventListener("click", async ()=>{
-          try{
-            const rr = Number(td.dataset.round), q = Number(td.dataset.q);
-            const ua = b64dec(td.dataset.ua || "");
-            if (!ua) return;
-            const ok = confirm(`„${ua}“ als KORREKT für Runde ${rr}, Frage ${q} übernehmen?`);
-            if (!ok) return;
-            await addVariantToCorrect(rr, q, ua);
-            await loadEvaluation();
-            await loadScores();
-          }catch(err){
-            alert("Konnte nicht speichern: " + err.message);
-            console.error(err);
-          }
-        });
-      });
-
-      for (const team in punkteMap) {
-        if (!scoresData[team]) scoresData[team] = {};
-        scoresData[team][`Runde ${r}`] = punkteMap[team];
-      }
-      await postJSON("/save-scores", scoresData);
     }
 
-    async function addVariantToCorrect(round, question, newVar) {
-      const corr = await getJSON("/correct-answers");
-      const keyR = `round_${round}`, keyQ = `question_${question}`;
-      let prev = corr[keyR] || {};
-      let curr = (typeof prev[keyQ] !== "undefined") ? prev[keyQ] : prev[question - 1];
-      let list = normalizeCorrect(curr);
+    function renderScores(){
+      scoresBody.innerHTML='';
+      for(const t of teams){
+        if(!scores[t]) scores[t]={};
+        let sum=0;
+        const tr=document.createElement('tr');
+        const tdTeam=document.createElement('td'); tdTeam.textContent=t; tr.appendChild(tdTeam);
+        const tdSum=document.createElement('td'); tdSum.className='right'; tr.appendChild(tdSum);
 
-      if (!list.some(v => v.toLowerCase().trim() === newVar.toLowerCase().trim())) list.push(newVar);
-      const joined = list.join(", ");
-      await postJSON("/update-correct-answer", { round, question, answer: joined });
-    }
-
-    async function loadAnswersGrid() {
-      const data = await getJSON("/correct-answers");
-      let html = `<table><thead><tr><th style="width:120px">Runde</th><th style="width:120px">Frage</th><th>Richtige Antwort(en)</th></tr></thead><tbody>`;
-      for (let r = 1; r <= 6; r++) {
-        html += `<tr class="round-header"><td colspan="3">Runde ${r}</td></tr>`;
-        const round = data[`round_${r}`] || {};
-        for (let q = 1; q <= 12; q++) {
-          const rawObj = round[`question_${q}`];
-          const rawArr = round[q - 1];
-          const val = rawObj ?? rawArr ?? "";
-          const show = Array.isArray(val) ? val.join(", ") : String(val);
-          html += `<tr>
-            <td>Runde ${r}</td>
-            <td>Frage ${q}</td>
-            <td style="text-align:left">
-              <input class="answers-input" type="text"
-                     value="${escapeAttr(show)}"
-                     data-round="${r}" data-question="${q}"
-                     placeholder="z.B. Berlin; Bärlin | Hauptstadt" />
-            </td>
-          </tr>`;
+        for(let r=1;r<=MAX_ROUNDS;r++){
+          const td=document.createElement('td'); td.className='right';
+          const v=+scores[t][`Runde ${r}`]||0;
+          td.textContent=v; sum+=v;
+          tr.appendChild(td);
         }
-      }
-      html += `</tbody></table>`;
-      const wrap = document.getElementById("answersGrid");
-      wrap.innerHTML = html;
+        // Zusatzpunkte
+        const tdExtra=document.createElement('td');
+        const inp=document.createElement('input');
+        inp.type='number'; inp.className='input-small';
+        inp.value=scores[t].extra||0;
+        inp.addEventListener('change',()=>{scores[t].extra=+inp.value;});
+        tdExtra.appendChild(inp);
+        tr.appendChild(tdExtra);
 
-      wrap.querySelectorAll(".answers-input").forEach(inp=>{
-        inp.addEventListener("blur", onSaveAnswerCell);
-        inp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); inp.blur(); } });
-      });
-    }
-
-    async function onSaveAnswerCell(e) {
-      try{
-        const el = e.target;
-        const round = Number(el.dataset.round), question = Number(el.dataset.question), answer = el.value.trim();
-        await postJSON("/update-correct-answer", { round, question, answer });
-      }catch(err){
-        alert("Konnte nicht speichern: " + err.message);
-        console.error(err);
+        tdSum.textContent=sum+(+scores[t].extra||0);
+        scoresBody.appendChild(tr);
       }
     }
 
-    async function heavyRefresh() {
-      await fetchRound();
-      await Promise.all([loadScores(), loadEvaluation(), loadAnswersGrid()]);
-    }
-    async function lightRefresh() {
-      await Promise.all([loadScores(), loadEvaluation()]);
+    async function saveScores(){
+      await fetch('/save-scores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(scores)});
+      alert('Punkte gespeichert.');
     }
 
-    heavyRefresh();
-    setInterval(lightRefresh, 5000);
+    document.getElementById('applyRoundBtn').addEventListener('click',async()=>{
+      const r=+roundSel.value;
+      const closed=statusSel.value==='closed';
+      await fetch('/current-round',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({round:r,closed})});
+      refresh();
+    });
+    document.getElementById('saveCorrectBtn').addEventListener('click',saveCorrect);
+    document.getElementById('saveScoresBtn').addEventListener('click',saveScores);
+
+    refresh();
   </script>
 </body>
 </html>

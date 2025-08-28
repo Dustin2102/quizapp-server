@@ -2,134 +2,223 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Ergebnisse</title>
+  <title>Runden-Ansichten – Teamantworten</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    body {
-      text-align: center;
-      padding: 2rem;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to bottom, #ffffff, #f5f5f5);
+    :root{
+      --fg:#0f172a; --muted:#64748b; --accent:#3b82f6;
+      --accent-2:#22c55e; --accent-3:#ef4444;
+      --bg-from:#ffffff; --bg-to:#f6f8fb; --card:#ffffff;
+      --ring: rgba(59,130,246,.18); --border:#e5e7eb; --shadow: 0 6px 20px rgba(2,6,23,.08);
     }
-    h1 {
-      margin-bottom: 1.5rem;
-      font-size: 2.5rem;
+    html,body{height:100%}
+    body{
+      margin:0; padding:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--fg);
+      background: linear-gradient(180deg, var(--bg-from), var(--bg-to));
+      min-height:100dvh;
     }
-    table {
-      margin: 1rem auto;
-      border-collapse: collapse;
-      font-size: 1.4rem;
-      min-width: 400px;
-      display: none;
-      opacity: 0;
-      transition: opacity 1s;
+    .wrap{ width:min(1100px, 96vw); margin:28px auto 40px; }
+    h1{ margin:0 0 8px; }
+    .sub{ color:var(--muted); margin:0 0 20px; }
+
+    .toolbar{
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+      background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; box-shadow:var(--shadow);
     }
-    th, td {
-      border: 1px solid #999;
-      padding: 0.5rem 1.2rem;
-      text-align: center;
+    .toolbar > *{ margin-right:8px; }
+    select, input[type="text"]{
+      padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; outline:none;
     }
-    th {
-      background-color: #f0f0f0;
+    select:focus, input[type="text"]:focus{ box-shadow:0 0 0 4px var(--ring); border-color:#93c5fd; }
+    .btn{ padding:10px 14px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; }
+    .btn:hover{ filter:saturate(1.05); }
+    .switch{ display:inline-flex; align-items:center; gap:6px; }
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow);
+      margin-top:14px; overflow:auto;
     }
-    #singleResult {
-      font-size: 1.6rem;
-      margin-top: 2rem;
-      min-height: 3rem;
+    table{ width:100%; border-collapse:collapse; font-size:14px; }
+    thead th{
+      position:sticky; top:0; background:#f8fafc; border-bottom:1px solid var(--border);
+      text-align:left; padding:10px; font-weight:700;
     }
-    button {
-      padding: 0.6rem 1.2rem;
-      font-size: 1.2rem;
-      margin: 0.5rem;
-      cursor: pointer;
-      background-color: #00a86b;
-      border: none;
-      border-radius: 10px;
-      color: white;
-      transition: 0.2s;
+    tbody td{ border-bottom:1px solid #eef2f7; padding:8px 10px; vertical-align:top; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .badge{
+      display:inline-block; padding:.2rem .5rem; border:1px solid var(--border); border-radius:999px; font-size:.8rem; color:#0f172a; background:#fff;
     }
-    button:hover {
-      background-color: #007a4d;
-    }
-    /* Farben für Top 3 */
-    .gold { color: #d4af37; font-weight: bold; }
-    .silver { color: #c0c0c0; font-weight: bold; }
-    .bronze { color: #cd7f32; font-weight: bold; }
+    .muted{ color:var(--muted); }
+    .right{ text-align:right; }
   </style>
 </head>
 <body>
-  <h1>📊 Endergebnisse</h1>
+  <div class="wrap">
+    <h1>Team-Antworten pro Runde</h1>
+    <p class="sub">Während z. B. Runde 5 läuft, kannst du hier die Antworten aus anderen Runden (1–10) ansehen.</p>
 
-  <div id="singleResult"></div>
-  <button id="nextBtn" onclick="zeigeNaechstes()">▶️ Nächster Platz</button>
-  <button onclick="zeigeAlle()">📋 Alle anzeigen</button>
+    <div class="toolbar">
+      <label>Runde:
+        <select id="roundSelect"></select>
+      </label>
 
-  <table id="resultsTable">
-    <thead>
-      <tr>
-        <th>Platz</th>
-        <th>Team</th>
-        <th>Punkte</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Ergebnisse werden hier eingefügt -->
-    </tbody>
-  </table>
+      <label>Team filtern:
+        <input type="text" id="teamFilter" placeholder="Teamname…">
+      </label>
+
+      <span class="switch">
+        <input type="checkbox" id="onlySubmitted" />
+        <label for="onlySubmitted">Nur Abgaben zeigen</label>
+      </span>
+
+      <button class="btn" id="reloadBtn">Neu laden</button>
+
+      <span class="switch">
+        <input type="checkbox" id="autoRefresh" />
+        <label for="autoRefresh">Auto-Refresh (alle 5 s)</label>
+      </span>
+
+      <span id="status" class="muted"></span>
+    </div>
+
+    <div class="card">
+      <table id="answersTable">
+        <thead>
+          <tr>
+            <th style="min-width:180px">Team</th>
+            <th class="mono">1</th><th class="mono">2</th><th class="mono">3</th><th class="mono">4</th><th class="mono">5</th><th class="mono">6</th>
+            <th class="mono">7</th><th class="mono">8</th><th class="mono">9</th><th class="mono">10</th><th class="mono">11</th><th class="mono">12</th>
+            <th style="min-width:120px">Abgegeben</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
 
   <script>
-    let teams = [];
-    let index = 0;
+    const MAX_ROUNDS = 10;
 
-    fetch("/scores")
-      .then(res => res.json())
-      .then(scores => {
-        teams = Object.entries(scores).map(([team, punkteObj]) => {
-          const punkte = Object.values(punkteObj).reduce((a, b) => a + b, 0);
-          return { team, punkte };
-        });
+    const roundSelect   = document.getElementById('roundSelect');
+    const teamFilter    = document.getElementById('teamFilter');
+    const onlySubmitted = document.getElementById('onlySubmitted');
+    const reloadBtn     = document.getElementById('reloadBtn');
+    const autoRefreshCb = document.getElementById('autoRefresh');
+    const statusEl      = document.getElementById('status');
+    const tbody         = document.getElementById('tbody');
 
-        teams.sort((a, b) => b.punkte - a.punkte);
-        zeigeNaechstes(); // Erstes Team direkt anzeigen
-      })
-      .catch(err => {
-        document.getElementById("singleResult").textContent = "Fehler beim Laden der Daten.";
-        console.error(err);
-      });
+    let timer = null;
+    let allTeams = [];
 
-    function zeigeNaechstes() {
-      if (index < teams.length) {
-        const { team, punkte } = teams[index];
-        document.getElementById("singleResult").innerHTML =
-          `<strong>Platz ${index + 1}:</strong> ${team} mit <strong>${punkte}</strong> Punkten`;
-        index++;
-      } else {
-        document.getElementById("singleResult").innerHTML = "🎉 Alle Plätze wurden angezeigt!";
-        document.getElementById("nextBtn").disabled = true;
+    // Runde-Options dynamisch 1..10
+    function buildRoundOptions(selectedRound){
+      roundSelect.innerHTML = '';
+      for(let r=1;r<=MAX_ROUNDS;r++){
+        const opt = document.createElement('option');
+        opt.value = r; opt.textContent = `Runde ${r}`;
+        if (r === selectedRound) opt.selected = true;
+        roundSelect.appendChild(opt);
       }
     }
 
-    function zeigeAlle() {
-      const table = document.getElementById("resultsTable");
-      const tbody = table.querySelector("tbody");
-      tbody.innerHTML = "";
-
-      teams.forEach((t, i) => {
-        const row = document.createElement("tr");
-        let klasse = "";
-        if (i === 0) klasse = "gold";
-        else if (i === 1) klasse = "silver";
-        else if (i === 2) klasse = "bronze";
-
-        row.innerHTML = `<td class="${klasse}">${i + 1}</td>
-                         <td class="${klasse}">${t.team}</td>
-                         <td class="${klasse}">${t.punkte}</td>`;
-        tbody.appendChild(row);
-      });
-
-      table.style.display = "table";
-      setTimeout(() => { table.style.opacity = 1; }, 50); // Fade-In
+    async function loadTeams(){
+      try{ allTeams = await fetch('/teams').then(r=>r.json()); }
+      catch{ allTeams = []; }
     }
+
+    async function loadAndRender(){
+      clearTimeout(timer);
+      const r = +roundSelect.value;
+      const filter = (teamFilter.value || '').toLowerCase().trim();
+      const onlyAbgabe = !!onlySubmitted.checked;
+      status('Lade …');
+
+      try{
+        const [allAnswers] = await Promise.all([
+          fetch('/data/teamAnswers.json').then(r=>r.json())
+        ]);
+        const key = `round_${r}`;
+        const byTeam = allAnswers[key] || {};
+
+        // Wenn wir eine vollständige Teamliste haben, nutzen wir die – sonst nur die mit Abgabe
+        const teams = (Array.isArray(allTeams) && allTeams.length)
+          ? allTeams.slice()
+          : Object.keys(byTeam);
+
+        const rows = teams
+          .filter(t => t.toLowerCase().includes(filter))
+          .filter(t => !onlyAbgabe || byTeam[t])
+          .sort((a,b) => a.localeCompare(b, 'de'));
+
+        tbody.innerHTML = '';
+        if (rows.length === 0){
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 14;
+          td.className = 'muted';
+          td.textContent = 'Keine Einträge gefunden.';
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+        } else {
+          for (const team of rows){
+            const entry = byTeam[team] || null;
+            const answers = entry?.answers || [];
+            const timestamp = entry?.timestamp || null;
+
+            const tr = document.createElement('tr');
+
+            const tdTeam = document.createElement('td');
+            tdTeam.innerHTML = `<span class="badge">${escapeHtml(team)}</span>`;
+            tr.appendChild(tdTeam);
+
+            for (let i=0;i<12;i++){
+              const td = document.createElement('td');
+              const val = (answers[i] ?? '').toString();
+              td.textContent = val || (entry ? '' : '–');
+              tr.appendChild(td);
+            }
+
+            const tdTime = document.createElement('td');
+            tdTime.className = 'muted right';
+            tdTime.textContent = timestamp ? new Date(timestamp).toLocaleTimeString() : (entry ? '–' : 'keine Abgabe');
+            tr.appendChild(tdTime);
+
+            tbody.appendChild(tr);
+          }
+        }
+        status(`Runde ${r}: ${rows.length} Teams`);
+      }catch(e){
+        console.error(e);
+        status('Fehler beim Laden');
+      } finally {
+        if (autoRefreshCb.checked){
+          timer = setTimeout(loadAndRender, 5000);
+        }
+      }
+    }
+
+    function status(txt){ statusEl.textContent = txt; }
+    function escapeHtml(s){ return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    reloadBtn.addEventListener('click', loadAndRender);
+    roundSelect.addEventListener('change', loadAndRender);
+    teamFilter.addEventListener('input', () => { if (!autoRefreshCb.checked) loadAndRender(); });
+    onlySubmitted.addEventListener('change', loadAndRender);
+    autoRefreshCb.addEventListener('change', loadAndRender);
+
+    // Init: aktuelle Runde vorwählen & Teams cachen
+    (async function init(){
+      try{
+        const r = await fetch('/current-round').then(r=>r.json());
+        const cr = parseInt(r.round||1,10);
+        buildRoundOptions(Math.min(MAX_ROUNDS, Math.max(1, cr)));
+      }catch{
+        buildRoundOptions(1);
+      }
+      await loadTeams();
+      loadAndRender();
+    })();
   </script>
 </body>
 </html>

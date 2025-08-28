@@ -117,18 +117,88 @@
   </div>
 
   <script>
-    const teamName = localStorage.getItem("teamName");
-    if (!teamName) { window.location.href = "start.html"; }
-    document.getElementById("teamBadge").textContent = "Team: " + teamName;
+    // ===== Rejoin-Logik (NEU): Token + Heartbeat =====
+    const LS_TEAM = "teamName";
+    const LS_TOKEN = "teamToken";
+
+    async function ensureTokenForTeam(name) {
+      try {
+        const r = await fetch("/teams/get-or-assign-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teamName: name }),
+        });
+        if (!r.ok) return null;
+        const { token } = await r.json();
+        if (token) localStorage.setItem(LS_TOKEN, token);
+        return token || null;
+      } catch { return null; }
+    }
+
+    async function tryRejoinByToken() {
+      const token = localStorage.getItem(LS_TOKEN);
+      if (!token) return null;
+      try {
+        const r = await fetch(`/teams/rejoin?token=${encodeURIComponent(token)}`);
+        if (!r.ok) return null;
+        const { teamName } = await r.json();
+        if (teamName) {
+          localStorage.setItem(LS_TEAM, teamName);
+          return teamName;
+        }
+        return null;
+      } catch { return null; }
+    }
+
+    async function heartbeatLoop() {
+      const token = localStorage.getItem(LS_TOKEN);
+      if (!token) return; // erst aktiv, wenn wir ein Token haben
+      const hidden = document.visibilityState === "hidden";
+      try {
+        await fetch("/teams/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, pageHidden: hidden }),
+        });
+      } catch {}
+    }
+    document.addEventListener("visibilitychange", heartbeatLoop);
+
+    // ===== Bestehende App-Logik (leicht angepasst) =====
+    let teamName = localStorage.getItem(LS_TEAM);
+
+    // NEU: Rejoin-Pfade – falls kein teamName, aber Token vorhanden -> Rejoin
+    (async function initIdentity(){
+      if (!teamName) {
+        const rejoined = await tryRejoinByToken();
+        if (rejoined) {
+          teamName = rejoined;
+        } else {
+          // Kein Rejoin möglich -> zurück zur Startseite
+          window.location.href = "start.html";
+          return;
+        }
+      }
+      // teamName existiert -> sicherstellen, dass es ein Token gibt
+      if (!localStorage.getItem(LS_TOKEN)) {
+        await ensureTokenForTeam(teamName);
+      }
+      document.getElementById("teamBadge").textContent = "Team: " + teamName;
+      // Heartbeat starten
+      heartbeatLoop();
+      setInterval(heartbeatLoop, 15000); // alle 15s
+      // Danach normalen Ablauf starten
+      bootApp();
+    })();
 
     let inputsBuilt = false;
     let lastRound = -1;
     let lastClosed = null;
 
-    document.addEventListener("DOMContentLoaded", () => {
+    function bootApp(){
       refreshState();
       setInterval(refreshState, 4000); // Auto-Refresh
-    });
+    }
 
     async function refreshState(){
       try{

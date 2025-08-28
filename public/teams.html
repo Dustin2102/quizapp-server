@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teams verwalten</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    :root{
+      --fg:#0f172a; --muted:#64748b; --accent:#3b82f6;
+      --bg-from:#ffffff; --bg-to:#f6f8fb; --card:#ffffff;
+      --ring: rgba(59,130,246,.18); --border:#e5e7eb; --shadow: 0 6px 20px rgba(2,6,23,.08);
+      --danger:#dc2626; --ok:#16a34a;
+    }
+    html,body{height:100%}
+    body{
+      margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--fg); background:linear-gradient(180deg,var(--bg-from),var(--bg-to));
+      min-height:100dvh;
+    }
+    .wrap{ width:min(1100px,96vw); margin:28px auto 40px; }
+    h1{ margin:0 0 6px; }
+    .sub{ color:var(--muted); margin:0 0 16px; }
+    .toolbar{
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+      background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; box-shadow:var(--shadow);
+      position:sticky; top:0; z-index:2;
+    }
+    .toolbar > *{ margin-right:8px; }
+    input,select{
+      padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none;
+    }
+    input:focus,select:focus{ box-shadow:0 0 0 4px var(--ring); border-color:#93c5fd; }
+    .btn{ padding:10px 14px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; }
+    .btn:hover{ filter:saturate(1.05); }
+    .btn.danger{ border-color:#fecaca; background:#fef2f2; color:#7f1d1d; }
+    .btn.ok{ border-color:#bbf7d0; background:#ecfdf5; color:#14532d; }
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow);
+      margin-top:14px; overflow:auto;
+    }
+    table{ width:100%; border-collapse:collapse; font-size:14px; }
+    thead th{
+      position:sticky; top:0; background:#f8fafc; border-bottom:1px solid var(--border);
+      text-align:left; padding:10px; font-weight:700;
+    }
+    tbody td{ border-bottom:1px solid #eef2f7; padding:8px 10px; vertical-align:middle; }
+    .muted{ color:var(--muted); }
+    .right{text-align:right}
+    .badge{ display:inline-block; padding:.2rem .5rem; border:1px solid var(--border); border-radius:999px; background:#fff; }
+    .dup{ background:#fff7ed; border-color:#fed7aa; }
+    .split{ height:10px }
+    .grid{
+      display:grid; gap:14px; grid-template-columns: 1fr;
+    }
+    @media(min-width:1000px){
+      .grid{ grid-template-columns: 1.1fr .9fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Teams verwalten</h1>
+    <p class="sub">Hier kannst du Teams entfernen und <b>Duplikate</b> bereinigen. (Entfernen löscht auch Tokens, Antworten und Scores des Teams.)</p>
+
+    <div class="toolbar">
+      <input id="filter" type="text" placeholder="Team filtern…" />
+      <button class="btn" id="reloadBtn">Neu laden</button>
+      <a class="btn" href="admin.html">← Admin</a>
+      <a class="btn" href="leaderboard.html" target="_blank">Leaderboard</a>
+      <span id="status" class="muted"></span>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h3 style="margin:0 0 10px">Alle Teams</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th class="right">Aktion</th>
+            </tr>
+          </thead>
+          <tbody id="teamsBody"></tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h3 style="margin:0 0 10px">Duplikate finden & bereinigen</h3>
+        <p class="sub">Duplikate werden <em>case-insensitive</em> erkannt (z. B. „Die Füchse“ und „die füchse“).</p>
+        <div id="dupsWrap"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const teamsBody = document.getElementById('teamsBody');
+    const dupsWrap  = document.getElementById('dupsWrap');
+    const statusEl  = document.getElementById('status');
+    const filterInp = document.getElementById('filter');
+    const reloadBtn = document.getElementById('reloadBtn');
+
+    let teams = [];
+
+    function status(t){ statusEl.textContent = t || ''; }
+    function esc(s){ return (s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    async function loadTeams(){
+      status('Lade …');
+      const res = await fetch('/teams');
+      const data = await res.json();
+      teams = Array.isArray(data) ? data.slice() : [];
+      render();
+      status(`${teams.length} Teams geladen`);
+    }
+
+    function render(){
+      const f = (filterInp.value||'').toLowerCase().trim();
+      const list = teams.filter(t => t.toLowerCase().includes(f)).sort((a,b)=>a.localeCompare(b,'de'));
+
+      teamsBody.innerHTML = '';
+      if(list.length===0){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td'); td.colSpan=2; td.className='muted'; td.textContent='Keine Teams';
+        tr.appendChild(td); teamsBody.appendChild(tr);
+      }else{
+        for(const t of list){
+          const tr = document.createElement('tr');
+          const tdName = document.createElement('td');
+          tdName.innerHTML = `<span class="badge">${esc(t)}</span>`;
+          const tdAct = document.createElement('td'); tdAct.className='right';
+          const btn = document.createElement('button');
+          btn.className='btn danger';
+          btn.textContent='Entfernen';
+          btn.addEventListener('click', ()=> removeTeam(t));
+          tdAct.appendChild(btn);
+          tr.appendChild(tdName); tr.appendChild(tdAct);
+          teamsBody.appendChild(tr);
+        }
+      }
+      renderDuplicates();
+    }
+
+    function findDuplicates(){
+      const map = new Map(); // key: lower name -> array of original names
+      for(const t of teams){
+        const k = t.toLowerCase().trim();
+        if(!map.has(k)) map.set(k, []);
+        map.get(k).push(t);
+      }
+      const dups = [];
+      for(const [k, arr] of map.entries()){
+        if(arr.length > 1){
+          // stabile Reihenfolge
+          arr.sort((a,b)=>a.localeCompare(b,'de'));
+          dups.push(arr);
+        }
+      }
+      // sort groups by group length desc
+      dups.sort((a,b)=> b.length - a.length);
+      return dups;
+    }
+
+    function renderDuplicates(){
+      const dups = findDuplicates();
+      dupsWrap.innerHTML = '';
+      if(dups.length === 0){
+        const p = document.createElement('p');
+        p.className='muted'; p.textContent='Keine Duplikate gefunden.';
+        dupsWrap.appendChild(p);
+        return;
+      }
+
+      for(const group of dups){
+        const box = document.createElement('div');
+        box.style.border='1px solid var(--border)';
+        box.style.borderRadius='12px';
+        box.style.padding='12px';
+        box.style.marginBottom='10px';
+        box.classList.add('dup');
+
+        const title = document.createElement('div');
+        title.style.marginBottom='8px';
+        title.innerHTML = `<b>${esc(group[0])}</b> – ${group.length} Einträge (case-insensitive gleich)`;
+        box.appendChild(title);
+
+        // Buttons je Team
+        for(const t of group){
+          const row = document.createElement('div');
+          row.style.display='flex';
+          row.style.justifyContent='space-between';
+          row.style.alignItems='center';
+          row.style.gap='8px';
+          row.style.marginBottom='6px';
+
+          const label = document.createElement('div');
+          label.innerHTML = `<span class="badge">${esc(t)}</span>`;
+          const actions = document.createElement('div');
+
+          const keepBtn = document.createElement('button');
+          keepBtn.className='btn ok'; keepBtn.textContent='Behalten';
+          keepBtn.disabled = true; // rein informativ
+
+          const delBtn = document.createElement('button');
+          delBtn.className='btn danger'; delBtn.textContent='Entfernen';
+          delBtn.addEventListener('click', ()=> removeTeam(t));
+
+          actions.appendChild(keepBtn);
+          actions.appendChild(delBtn);
+          row.appendChild(label);
+          row.appendChild(actions);
+          box.appendChild(row);
+        }
+
+        // Schnellauswahl: alle außer ersten löschen
+        if(group.length > 1){
+          const hr = document.createElement('div'); hr.className='split'; box.appendChild(hr);
+          const bulk = document.createElement('button');
+          bulk.className='btn danger';
+          bulk.textContent = `Alle außer „${group[0]}” entfernen`;
+          bulk.addEventListener('click', async ()=>{
+            if(!confirm(`Duplikate bereinigen?\n\nEs bleiben nur „${group[0]}” erhalten, alle anderen werden vollständig entfernt.`)) return;
+            for(let i=1;i<group.length;i++){
+              await removeTeam(group[i], true);
+            }
+            await loadTeams();
+          });
+          box.appendChild(bulk);
+        }
+
+        dupsWrap.appendChild(box);
+      }
+    }
+
+    async function removeTeam(team, silent=false){
+      const msg = `„${team}“ wirklich entfernen?\n\nDies löscht Team aus:\n• teams.json\n• teamTokens.json\n• teamAnswers.json (alle Runden)\n• scores.json`;
+      if(!silent && !confirm(msg)) return;
+
+      try{
+        const res = await fetch('/admin/remove-team', {
+          method:'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ teamName: team })
+        });
+        if(!res.ok){
+          const t = await res.text().catch(()=>res.status);
+          if(!silent) alert('Fehler: ' + t);
+          return;
+        }
+        if(!silent) status(`Team „${team}“ entfernt.`);
+        // lokal aus Liste entfernen, ohne neu zu laden
+        teams = teams.filter(x => x !== team);
+        render();
+      }catch(e){
+        if(!silent) alert('Netzwerkfehler beim Entfernen.');
+      }
+    }
+
+    // Events
+    reloadBtn.addEventListener('click', loadTeams);
+    filterInp.addEventListener('input', render);
+
+    // Init
+    loadTeams();
+  </script>
+</body>
+</html>
