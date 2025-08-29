@@ -16,7 +16,7 @@
     *{box-sizing:border-box}
     html,body{height:100%}
     body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--fg); background:linear-gradient(180deg,#fff,var(--bg)); min-height:100dvh; }
-    /* Breiter, damit 12 Antworten + Punkte + Zusatz auf Standard-1920px ohne Scroll passen */
+    /* Breit genug, damit 12 Antworten + Punkte + Zusatz auf 1920px ohne Scrollen passen */
     .wrap{ width:min(2000px,98vw); margin:24px auto 40px; }
 
     h1{ margin:0 0 6px; }
@@ -83,7 +83,6 @@
       <button class="btn" id="openBtn">Öffnen</button>
 
       <span class="badge" id="liveBadge">—</span>
-
       <span class="sp"></span>
 
       <a class="link" href="qr.html" target="_blank">QR-Code</a>
@@ -93,6 +92,7 @@
       <a class="link" href="active.html" target="_blank">Aktive Teams</a>
       <a class="link" href="teams.html" target="_blank">Teams verwalten</a>
 
+      <span class="badge" id="teamsBadge">Teams: 0</span>
       <button class="btn danger" id="resetBtn">Zurücksetzen</button>
       <span id="topStatus" class="status"></span>
     </div>
@@ -106,8 +106,13 @@
     <!-- AUSWERTUNG -->
     <section id="view-eval" class="view active">
       <div class="card">
-        <h2 style="margin:0 0 8px">Auswertung & Zusatz/Abzug</h2>
-        <p class="sub">Klicke die Antwort-Chips (1–12): <b style="color:#14532d">grün = richtig</b>, <b style="color:#7f1d1d">rot = falsch</b>. Vorbefüllt anhand „Korrekte Antworten“.</p>
+        <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:6px">
+          <div>
+            <h2 style="margin:0">Auswertung & Zusatz/Abzug</h2>
+            <p class="sub" style="margin:2px 0 0">Klicke die Antwort-Chips (1–12): <b style="color:#14532d">grün = richtig</b>, <b style="color:#7f1d1d">rot = falsch</b>. Vorbefüllt anhand „Korrekte Antworten“.</p>
+          </div>
+          <div class="badge" id="submittedBadge">Abgegeben: 0 / 0</div>
+        </div>
 
         <div>
           <table>
@@ -175,6 +180,7 @@
     const closeBtn = document.getElementById('closeBtn');
     const resetBtn = document.getElementById('resetBtn');
     const liveBadge = document.getElementById('liveBadge');
+    const teamsBadge = document.getElementById('teamsBadge');
     const topStatus = document.getElementById('topStatus');
 
     const tabBtns = document.querySelectorAll('.tab-btn');
@@ -183,6 +189,7 @@
     const evalHead = document.getElementById('evalHead');
     const evalBody = document.getElementById('evalBody');
     const submittedBody = document.getElementById('submittedBody');
+    const submittedBadge = document.getElementById('submittedBadge');
     const autoFillBtn = document.getElementById('autoFillBtn');
     const saveScoresBtn = document.getElementById('saveScoresBtn');
     const evalStatus = document.getElementById('evalStatus');
@@ -199,6 +206,7 @@
     let teams = [], scores = {}, correct = {}, answersDb = {};
     let currentRound = 1, closed = false;
     let manualCorrect = new Map(); // team -> Set(questionIndex)
+    let refreshTimer = null;
 
     // Utils
     const esc = s => (s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -240,6 +248,7 @@
         fetch('/data/teamAnswers.json').then(r=>r.json()).catch(()=>({})),
       ]);
       teams=t; scores=s; correct=c; answersDb=a;
+      teamsBadge.textContent = `Teams: ${Array.isArray(teams)?teams.length:0}`;
     }
 
     // ---------- AUSWERTUNG ----------
@@ -259,15 +268,13 @@
     }
 
     function buildEvalHeader(){
-      // Zeile 1: Überschrift über Antworten
       const r1 = document.createElement('tr');
       r1.innerHTML = `<th>Team</th><th colspan="12" class="center">Antworten 1–12</th><th class="right">Pkt</th><th class="center">Zusatz ±</th>`;
-      // Zeile 2: F1..F12
       const r2 = document.createElement('tr');
-      r2.appendChild(document.createElement('th')); // Team leer
+      r2.appendChild(document.createElement('th'));
       for(let i=1;i<=12;i++){ const th=document.createElement('th'); th.textContent='F'+i; r2.appendChild(th); }
-      r2.appendChild(document.createElement('th')); // Pkt
-      r2.appendChild(document.createElement('th')); // Zusatz
+      r2.appendChild(document.createElement('th'));
+      r2.appendChild(document.createElement('th'));
       evalHead.innerHTML=''; evalHead.appendChild(r1); evalHead.appendChild(r2);
     }
 
@@ -280,24 +287,35 @@
     function renderEvaluation(){
       const r=Number(roundSel.value), valid=(r>=1 && r<=MAX_ROUNDS);
       evalBody.innerHTML=''; submittedBody.innerHTML=''; buildEvalHeader();
-      if(!valid){ evalBody.innerHTML=`<tr><td colspan="15" class="center"><span class="chip">Wähle eine Runde 1–${MAX_ROUNDS}</span></td></tr>`; return; }
+
+      const totalTeams = Array.isArray(teams)?teams.length:0;
+      const byTeam = answersDb[`round_${r}`] || {};
+      const submittedCount = Object.keys(byTeam).length;
+      submittedBadge.textContent = `Abgegeben: ${submittedCount} / ${totalTeams}`;
+
+      if(!valid){
+        evalBody.innerHTML=`<tr><td colspan="15" class="center"><span class="chip">Wähle eine Runde 1–${MAX_ROUNDS}</span></td></tr>`;
+        return;
+      }
 
       if(manualCorrect.size===0) autoPrefillFromCorrect();
 
-      const byTeam = answersDb[`round_${r}`] || {};
       const submitted=[];
       const teamSet = new Set([...teams, ...Object.keys(byTeam||{})]);
 
       for(const team of Array.from(teamSet).sort((a,b)=>a.localeCompare(b,'de'))){
         const entry = byTeam[team]||null;
-        if(entry){ const ts= entry.timestamp? new Date(entry.timestamp).toLocaleTimeString() : '–';
-          submitted.push({team, count:(entry.answers||[]).filter(v=>String(v||'').trim()).length, ts}); }
+        if(entry){
+          const ts= entry.timestamp? new Date(entry.timestamp).toLocaleTimeString() : '–';
+          submitted.push({team, count:(entry.answers||[]).filter(v=>String(v||'').trim()).length, ts});
+        }
 
         const tr=document.createElement('tr');
+
         // Team
         const tdTeam=document.createElement('td'); tdTeam.textContent=team; tr.appendChild(tdTeam);
 
-        // Antworten 1..12
+        // Antworten 1..12 (mit Text)
         const set = manualCorrect.get(team) || new Set();
         for(let i=1;i<=12;i++){
           const td=document.createElement('td');
@@ -393,10 +411,18 @@
       await loadCore(); await loadAll(); buildCorrectMatrix(); renderEvaluation(); renderAnswersDetail(); setTop('Zurückgesetzt.');
     }
 
+    // Auto-Refresh für Auswertung/Abgaben (alle 4s)
+    async function periodicRefresh(){
+      await loadAll();
+      renderEvaluation();
+      renderAnswersDetail();
+    }
+
     applyBtn.addEventListener('click', ()=>applyRound(null));
     openBtn.addEventListener('click', ()=>{ statusSel.value='open'; applyRound(false); });
     closeBtn.addEventListener('click', ()=>{ statusSel.value='closed'; applyRound(true); });
     resetBtn.addEventListener('click', doReset);
+
     saveScoresBtn.addEventListener('click', saveScores);
     saveAllCorrectBtn.addEventListener('click', saveAllCorrect);
     roundSel.addEventListener('change', ()=>{ manualCorrect.clear(); renderEvaluation(); renderAnswersDetail(); });
@@ -405,6 +431,9 @@
     (async function init(){
       await loadCore(); await loadAll();
       buildCorrectMatrix(); renderEvaluation(); renderAnswersDetail();
+      // Start Auto-Refresh
+      refreshTimer = setInterval(periodicRefresh, 4000);
+      window.addEventListener('beforeunload', ()=> clearInterval(refreshTimer));
     })();
   </script>
 </body>
