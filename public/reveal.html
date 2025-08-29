@@ -31,38 +31,36 @@
     tbody td{ border-bottom:1px solid #eef2f7; padding:10px; vertical-align:top; }
     .right{text-align:right}
     .rank{ font-weight:900; width:60px; }
-    .rank.gold{ color:var(--gold); }
-    .rank.silver{ color:var(--silver); }
-    .rank.bronze{ color:var(--bronze); }
+    .rank.gold{ color:var(--gold); } .rank.silver{ color:var(--silver); } .rank.bronze{ color:var(--bronze); }
 
-    /* ---- Fixe Control-Dock (immer sichtbar) ---- */
+    /* kompakte Dock */
     .dock{
       position:fixed; right:14px; top:14px; z-index:40;
-      background:#ffffffcc; backdrop-filter: blur(6px);
-      border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow);
-      padding:10px; display:flex; flex-direction:column; gap:8px; min-width:220px;
+      background:#ffffffee; backdrop-filter: blur(6px);
+      border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow);
+      padding:8px; display:flex; flex-direction:column; gap:6px;
+      width:auto; min-width:auto;
     }
-    .dock .row{ display:flex; gap:8px; flex-wrap:wrap; }
-    .dock button, .dock .btn{
-      padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; font-weight:800;
+    .dock .row{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .dock button{
+      padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; font-weight:800; font-size:13px;
     }
     .dock button.primary{ background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; border:none; }
     .dock button.warn{ background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; border:none; }
-    .dock label{ font-weight:600; display:flex; align-items:center; gap:8px; }
-    .dock small{ color:var(--muted); }
-
-    /* Canvas Feuerwerk */
-    #fx{ position:fixed; inset:0; pointer-events:none; z-index:30; display:none; }
+    .dock label{ font-weight:600; display:flex; align-items:center; gap:6px; font-size:13px; }
+    .dock small{ color:var(--muted); font-size:12px; }
     @media (max-width:640px){
       .dock{ left:14px; right:14px; top:auto; bottom:14px; }
     }
+
+    /* Feuerwerk Canvas */
+    #fx{ position:fixed; inset:0; pointer-events:none; z-index:30; display:none; }
   </style>
 </head>
 <body>
-  <!-- Feuerwerk -->
   <canvas id="fx"></canvas>
 
-  <!-- IMMER SICHTBARE CONTROL-DOCK -->
+  <!-- kompakte, immer sichtbare Dock -->
   <div class="dock">
     <div class="row">
       <button class="primary" id="btnReload">Neu laden</button>
@@ -70,11 +68,11 @@
       <button class="warn" id="btnFireworks">Feuerwerk</button>
     </div>
     <div class="row">
-      <button id="btnSortTotal">Sort: Gesamt</button>
-      <button id="btnSortName">Sort: Name</button>
+      <label><input type="checkbox" id="cbAuto" /> Auto (5s)</label>
+      <label><input type="checkbox" id="cbRounds" checked /> Rundenpunkte</label>
+      <button id="btnSortName">A–Z</button>
+      <button id="btnSortTotal">Σ</button>
     </div>
-    <label><input type="checkbox" id="cbAuto" /> Auto-Refresh (5s)</label>
-    <label><input type="checkbox" id="cbRounds" checked /> Punkte je Runde zeigen</label>
     <small id="dockInfo"></small>
   </div>
 
@@ -177,10 +175,9 @@
             tr.appendChild(td);
           }
         }
-
         tbody.appendChild(tr);
       }
-      dockInfo.textContent = `${rows.length} Teams • Sortierung: ${sortMode==='total'?'Gesamt':'Name'}`;
+      dockInfo.textContent = `${rows.length} Teams • Sortierung: ${sortMode==='total'?'Gesamt':'A–Z'}`;
     }
 
     async function loadAll(){
@@ -208,7 +205,7 @@
       else document.exitFullscreen?.();
     });
 
-    // Sortierer + Controls
+    // Controls
     btnSortTotal.addEventListener('click', ()=>{ sortMode='total'; render(); });
     btnSortName.addEventListener('click', ()=>{ sortMode='name'; render(); });
     cbRounds.addEventListener('change', render);
@@ -220,62 +217,35 @@
     const ctx = fx.getContext('2d');
     let fwTimer = null, particles = [];
 
-    function resizeCanvas(){
-      fx.width = window.innerWidth;
-      fx.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    function resizeCanvas(){ fx.width = window.innerWidth; fx.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
     function rand(min,max){ return Math.random()*(max-min)+min; }
-
     function burst(x,y,colors,amount=80){
       for(let i=0;i<amount;i++){
         const angle = Math.random()*Math.PI*2;
         const speed = rand(2,6);
-        particles.push({
-          x,y,
-          vx: Math.cos(angle)*speed,
-          vy: Math.sin(angle)*speed,
-          life: rand(60,120),
-          color: colors[(Math.random()*colors.length)|0],
-          size: rand(2,4),
-          gravity: 0.05,
-          drag: 0.99
-        });
+        particles.push({ x,y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, life:rand(60,120),
+          color: colors[(Math.random()*colors.length)|0], size:rand(2,4), gravity:0.05, drag:0.99 });
       }
     }
-
     function step(){
       ctx.clearRect(0,0,fx.width,fx.height);
       particles.forEach(p=>{
-        p.vx *= p.drag;
-        p.vy = p.vy*p.drag + p.gravity;
-        p.x += p.vx; p.y += p.vy;
-        p.life--;
+        p.vx *= p.drag; p.vy = p.vy*p.drag + p.gravity; p.x += p.vx; p.y += p.vy; p.life--;
         ctx.globalAlpha = Math.max(p.life/120, 0);
-        ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
       });
       particles = particles.filter(p=>p.life>0 && p.y<fx.height+20);
       if (particles.length>0 || fwTimer){ requestAnimationFrame(step); }
     }
-
     function fireworkShow(durationMs=5000){
       fx.style.display='block';
       const colors = ['#fbbf24','#60a5fa','#f472b6','#34d399','#f87171','#a78bfa'];
-      const spawn = ()=> {
-        burst(rand(0.2*fx.width,0.8*fx.width), rand(0.2*fx.height,0.5*fx.height), colors, 100);
-      };
-      spawn();
-      fwTimer = setInterval(spawn, 700);
-      step();
-      setTimeout(()=>{
-        clearInterval(fwTimer); fwTimer=null;
-        setTimeout(()=>{ fx.style.display='none'; }, 1600);
-      }, durationMs);
+      const spawn = ()=> burst(rand(0.2*fx.width,0.8*fx.width), rand(0.2*fx.height,0.5*fx.height), colors, 100);
+      spawn(); fwTimer = setInterval(spawn, 700); step();
+      setTimeout(()=>{ clearInterval(fwTimer); fwTimer=null; setTimeout(()=>{ fx.style.display='none'; }, 1600); }, durationMs);
     }
-
     btnFireworks.addEventListener('click', ()=> fireworkShow(6000));
 
     // Init
