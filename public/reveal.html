@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     :root{
-      --fg:#0f172a; --muted:#64748b; --accent:#2563eb;
+      --fg:#0f172a; --muted:#64748b;
       --border:#e5e7eb; --card:#fff; --bg:#f6f8fb; --shadow:0 8px 24px rgba(2,6,23,.12);
     }
     *{box-sizing:border-box}
@@ -21,48 +21,33 @@
     h1{ margin:0 0 6px; }
     .sub{ color:var(--muted); margin:0 0 14px; }
 
-    .card{
-      background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px;
-      box-shadow:var(--shadow); margin-top:16px; overflow:auto;
-    }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow); margin-top:16px; overflow:auto; }
     table{ width:100%; border-collapse:collapse; font-size:16px; }
     thead th{ position:sticky; top:0; background:#f8fafc; border-bottom:1px solid var(--border); padding:10px; text-align:left; }
     tbody td{ border-bottom:1px solid #eef2f7; padding:10px; vertical-align:top; }
     .right{text-align:right}
     .rank{ font-weight:900; width:60px; }
 
-    /* kompakte, fixierte Dock */
+    /* Dock oben rechts */
     .dock{
       position:fixed; right:14px; top:14px; z-index:40;
       background:#ffffffee; backdrop-filter: blur(6px);
       border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow);
-      padding:8px; display:flex; flex-direction:column; gap:6px;
-      width:auto; min-width:auto;
+      padding:8px; display:flex; flex-direction:column; gap:6px; width:auto; min-width:auto;
     }
     .dock .row{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
     .dock button{
-      padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; font-weight:800; font-size:13px;
-      /* >>> Fix: erzwinge sichtbaren Text auch bei globalem Gradient-Text-CSS */
-      color:#0f172a !important;
-      -webkit-text-fill-color:#0f172a !important;
-      background-image:none !important;
-      text-shadow:none !important;
+      padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; font-weight:800; font-size:13px;
+      /* Texte immer sichtbar – überschreibt evtl. globales CSS */
+      color:#0f172a !important; -webkit-text-fill-color:#0f172a !important; background-image:none !important; text-shadow:none !important;
     }
-    .dock button.primary{
-      background:linear-gradient(135deg,#22c55e,#16a34a); border:none;
-      color:#fff !important; -webkit-text-fill-color:#fff !important;
-    }
-    .dock button.warn{
-      background:linear-gradient(135deg,#f59e0b,#d97706); border:none;
-      color:#fff !important; -webkit-text-fill-color:#fff !important;
-    }
+    .dock button.primary{ background:linear-gradient(135deg,#22c55e,#16a34a) !important; border:none !important; color:#fff !important; -webkit-text-fill-color:#fff !important; }
+    .dock button.warn{ background:linear-gradient(135deg,#f59e0b,#d97706) !important; border:none !important; color:#fff !important; -webkit-text-fill-color:#fff !important; }
     .dock label{ font-weight:600; display:flex; align-items:center; gap:6px; font-size:13px; }
     .dock small{ color:var(--muted); font-size:12px; }
-    @media (max-width:640px){
-      .dock{ left:14px; right:14px; top:auto; bottom:14px; }
-    }
+    @media (max-width:640px){ .dock{ left:14px; right:14px; top:auto; bottom:14px; } }
 
-    /* Feuerwerk Canvas */
+    /* Feuerwerk */
     #fx{ position:fixed; inset:0; pointer-events:none; z-index:30; display:none; }
   </style>
 </head>
@@ -98,7 +83,6 @@
 
   <script>
     const MAX_ROUNDS = 10;
-
     const thead = document.getElementById('thead');
     const tbody = document.getElementById('tbody');
     const cbAuto = document.getElementById('cbAuto');
@@ -110,30 +94,16 @@
     const btnFireworks = document.getElementById('btnFireworks');
     const dockInfo = document.getElementById('dockInfo');
 
-    let allScores = {};
-    let allTeams = [];
-    let sortMode = 'total'; // 'total' | 'name'
-    let timer = null;
+    let allScores = {}, allTeams = [], sortMode = 'total', timer = null;
 
-    function sumTeam(team){
-      let s = 0;
-      for(let r=1;r<=MAX_ROUNDS;r++){
-        s += Number(allScores?.[team]?.[`Runde ${r}`] || 0);
-      }
-      return s;
-    }
+    function sumTeam(team){ let s=0; for(let r=1;r<=MAX_ROUNDS;r++) s += Number(allScores?.[team]?.[`Runde ${r}`]||0); return s; }
 
     function buildHead(){
       thead.innerHTML = '';
       const tr = document.createElement('tr');
-      const thRank = document.createElement('th'); thRank.textContent = '#'; tr.appendChild(thRank);
-      const thTeam = document.createElement('th'); thTeam.textContent = 'Team'; tr.appendChild(thTeam);
-      const thTotal = document.createElement('th'); thTotal.textContent = 'Gesamt'; thTotal.className='right'; tr.appendChild(thTotal);
+      tr.innerHTML = '<th>#</th><th>Team</th><th class="right">Gesamt</th>';
       if (cbRounds.checked){
-        for(let r=1;r<=MAX_ROUNDS;r++){
-          const th = document.createElement('th'); th.textContent = `R ${r}`; th.className='right';
-          tr.appendChild(th);
-        }
+        for(let r=1;r<=MAX_ROUNDS;r++){ const th=document.createElement('th'); th.textContent='R '+r; th.className='right'; tr.appendChild(th); }
       }
       thead.appendChild(tr);
     }
@@ -142,45 +112,18 @@
       buildHead();
       const set = new Set([...allTeams, ...Object.keys(allScores||{})]);
       let rows = Array.from(set);
+      rows.sort(sortMode==='name' ? (a,b)=>a.localeCompare(b,'de') : (a,b)=>sumTeam(b)-sumTeam(a)||a.localeCompare(b,'de'));
 
-      if (sortMode === 'name'){
-        rows.sort((a,b)=>a.localeCompare(b,'de'));
-      } else {
-        rows.sort((a,b)=> sumTeam(b) - sumTeam(a) || a.localeCompare(b,'de'));
-      }
+      const totals = rows.map(t=>({team:t,total:sumTeam(t)}));
+      const places = new Map(); let prev=null, place=0;
+      totals.forEach((x,i)=>{ if(prev===null || x.total<prev) place=i+1; places.set(x.team,place); prev=x.total; });
 
-      // Plätze (mit Gleichständen)
-      const totals = rows.map(t => ({team:t, total: sumTeam(t)}));
-      const places = new Map();
-      let prev = null, place = 0;
-      totals.forEach((x, idx) => {
-        if (prev === null || x.total < prev) place = idx + 1;
-        places.set(x.team, place);
-        prev = x.total;
-      });
-
-      tbody.innerHTML = '';
+      tbody.innerHTML='';
       for(const team of rows){
         const tr = document.createElement('tr');
-
-        const rank = places.get(team);
-        const tdRank = document.createElement('td'); tdRank.className = 'rank';
-        tdRank.textContent = rank;
-        tr.appendChild(tdRank);
-
-        const tdTeam = document.createElement('td'); tdTeam.textContent = team; tr.appendChild(tdTeam);
-
-        const total = sumTeam(team);
-        const tdTotal = document.createElement('td'); tdTotal.className='right'; tdTotal.innerHTML = `<b>${total}</b>`;
-        tr.appendChild(tdTotal);
-
+        tr.innerHTML = `<td class="rank">${places.get(team)}</td><td>${team}</td><td class="right"><b>${sumTeam(team)}</b></td>`;
         if (cbRounds.checked){
-          for(let r=1;r<=MAX_ROUNDS;r++){
-            const td = document.createElement('td'); td.className='right';
-            const v = Number(allScores?.[team]?.[`Runde ${r}`] || 0);
-            td.textContent = v ? v : '–';
-            tr.appendChild(td);
-          }
+          for(let r=1;r<=MAX_ROUNDS;r++){ const v = Number(allScores?.[team]?.[`Runde ${r}`]||0); const td=document.createElement('td'); td.className='right'; td.textContent=v? v : '–'; tr.appendChild(td); }
         }
         tbody.appendChild(tr);
       }
@@ -188,74 +131,28 @@
     }
 
     async function loadAll(){
-      const [teams, scores] = await Promise.all([
-        fetch('/teams').then(r=>r.json()).catch(()=>[]),
-        fetch('/scores').then(r=>r.json()).catch(()=>({}))
-      ]);
-      allTeams = Array.isArray(teams) ? teams : [];
-      allScores = (scores && typeof scores==='object') ? scores : {};
+      const [teams, scores] = await Promise.all([ fetch('/teams').then(r=>r.json()).catch(()=>[]), fetch('/scores').then(r=>r.json()).catch(()=>({})) ]);
+      allTeams = Array.isArray(teams)?teams:[]; allScores = (scores&&typeof scores==='object')?scores:{};
     }
 
-    async function refresh(){
-      clearTimeout(timer);
-      await loadAll();
-      render();
-      if (cbAuto.checked){
-        timer = setTimeout(refresh, 5000);
-      }
-    }
+    async function refresh(){ clearTimeout(timer); await loadAll(); render(); if(cbAuto.checked) timer=setTimeout(refresh,5000); }
 
-    // Fullscreen
-    btnFull.addEventListener('click', ()=>{
-      const el = document.documentElement;
-      if (!document.fullscreenElement) el.requestFullscreen?.();
-      else document.exitFullscreen?.();
-    });
-
-    // Controls
+    btnReload.addEventListener('click', refresh);
     btnSortTotal.addEventListener('click', ()=>{ sortMode='total'; render(); });
     btnSortName.addEventListener('click', ()=>{ sortMode='name'; render(); });
     cbRounds.addEventListener('change', render);
     cbAuto.addEventListener('change', refresh);
-    btnReload.addEventListener('click', refresh);
+    btnFull.addEventListener('click', ()=>{ const el=document.documentElement; if(!document.fullscreenElement) el.requestFullscreen?.(); else document.exitFullscreen?.(); });
 
-    // ========= Feuerwerk =========
-    const fx = document.getElementById('fx');
-    const ctx = fx.getContext('2d');
-    let fwTimer = null, particles = [];
+    // Feuerwerk (leicht)
+    const fx=document.getElementById('fx'), ctx=fx.getContext('2d'); function size(){ fx.width=innerWidth; fx.height=innerHeight; } addEventListener('resize',size); size();
+    let fwTimer=null, parts=[];
+    function rnd(a,b){return Math.random()*(b-a)+a}
+    function burst(){ const x=rnd(0.2*fx.width,0.8*fx.width), y=rnd(0.2*fx.height,0.5*fx.height), colors=['#fbbf24','#60a5fa','#f472b6','#34d399','#f87171','#a78bfa']; for(let i=0;i<100;i++){ const ang=Math.random()*Math.PI*2, sp=rnd(2,6); parts.push({x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,l:rnd(60,120),c:colors[(Math.random()*colors.length)|0],g:0.05,d:0.99,s:rnd(2,4)});} }
+    function step(){ ctx.clearRect(0,0,fx.width,fx.height); parts.forEach(p=>{p.vx*=p.d; p.vy=p.vy*p.d+p.g; p.x+=p.vx; p.y+=p.vy; p.l--; ctx.globalAlpha=Math.max(p.l/120,0); ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.s,0,Math.PI*2); ctx.fill();}); parts=parts.filter(p=>p.l>0); if(parts.length>0||fwTimer) requestAnimationFrame(step); }
+    function fireworks(ms=6000){ fx.style.display='block'; burst(); fwTimer=setInterval(burst,700); step(); setTimeout(()=>{ clearInterval(fwTimer); fwTimer=null; setTimeout(()=>fx.style.display='none',1500); },ms); }
+    btnFireworks.addEventListener('click', ()=>fireworks(6000));
 
-    function resizeCanvas(){ fx.width = window.innerWidth; fx.height = window.innerHeight; }
-    window.addEventListener('resize', resizeCanvas); resizeCanvas();
-
-    function rand(min,max){ return Math.random()*(max-min)+min; }
-    function burst(x,y,colors,amount=80){
-      for(let i=0;i<amount;i++){
-        const angle = Math.random()*Math.PI*2;
-        const speed = rand(2,6);
-        particles.push({ x,y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, life:rand(60,120),
-          color: colors[(Math.random()*colors.length)|0], size:rand(2,4), gravity:0.05, drag:0.99 });
-      }
-    }
-    function step(){
-      ctx.clearRect(0,0,fx.width,fx.height);
-      particles.forEach(p=>{
-        p.vx *= p.drag; p.vy = p.vy*p.drag + p.gravity; p.x += p.vx; p.y += p.vy; p.life--;
-        ctx.globalAlpha = Math.max(p.life/120, 0);
-        ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
-      });
-      particles = particles.filter(p=>p.life>0 && p.y<fx.height+20);
-      if (particles.length>0 || fwTimer){ requestAnimationFrame(step); }
-    }
-    function fireworkShow(durationMs=5000){
-      fx.style.display='block';
-      const colors = ['#fbbf24','#60a5fa','#f472b6','#34d399','#f87171','#a78bfa'];
-      const spawn = ()=> burst(rand(0.2*fx.width,0.8*fx.width), rand(0.2*fx.height,0.5*fx.height), colors, 100);
-      spawn(); fwTimer = setInterval(spawn, 700); step();
-      setTimeout(()=>{ clearInterval(fwTimer); fwTimer=null; setTimeout(()=>{ fx.style.display='none'; }, 1600); }, durationMs);
-    }
-    btnFireworks.addEventListener('click', ()=> fireworkShow(6000));
-
-    // Init
     refresh();
   </script>
 </body>
