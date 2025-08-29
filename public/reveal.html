@@ -8,7 +8,6 @@
   <style>
     :root{
       --fg:#0f172a; --muted:#64748b; --accent:#2563eb;
-      --gold:#f59e0b; --silver:#9ca3af; --bronze:#b45309;
       --border:#e5e7eb; --card:#fff; --bg:#f6f8fb; --shadow:0 8px 24px rgba(2,6,23,.12);
     }
     *{box-sizing:border-box}
@@ -31,9 +30,8 @@
     tbody td{ border-bottom:1px solid #eef2f7; padding:10px; vertical-align:top; }
     .right{text-align:right}
     .rank{ font-weight:900; width:60px; }
-    .rank.gold{ color:var(--gold); } .rank.silver{ color:var(--silver); } .rank.bronze{ color:var(--bronze); }
 
-    /* kompakte Dock */
+    /* kompakte, fixierte Dock */
     .dock{
       position:fixed; right:14px; top:14px; z-index:40;
       background:#ffffffee; backdrop-filter: blur(6px);
@@ -44,9 +42,20 @@
     .dock .row{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
     .dock button{
       padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; font-weight:800; font-size:13px;
+      /* >>> Fix: erzwinge sichtbaren Text auch bei globalem Gradient-Text-CSS */
+      color:#0f172a !important;
+      -webkit-text-fill-color:#0f172a !important;
+      background-image:none !important;
+      text-shadow:none !important;
     }
-    .dock button.primary{ background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; border:none; }
-    .dock button.warn{ background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; border:none; }
+    .dock button.primary{
+      background:linear-gradient(135deg,#22c55e,#16a34a); border:none;
+      color:#fff !important; -webkit-text-fill-color:#fff !important;
+    }
+    .dock button.warn{
+      background:linear-gradient(135deg,#f59e0b,#d97706); border:none;
+      color:#fff !important; -webkit-text-fill-color:#fff !important;
+    }
     .dock label{ font-weight:600; display:flex; align-items:center; gap:6px; font-size:13px; }
     .dock small{ color:var(--muted); font-size:12px; }
     @media (max-width:640px){
@@ -60,7 +69,6 @@
 <body>
   <canvas id="fx"></canvas>
 
-  <!-- kompakte, immer sichtbare Dock -->
   <div class="dock">
     <div class="row">
       <button class="primary" id="btnReload">Neu laden</button>
@@ -156,8 +164,7 @@
         const tr = document.createElement('tr');
 
         const rank = places.get(team);
-        const tdRank = document.createElement('td');
-        tdRank.className = 'rank ' + (rank===1?'gold':rank===2?'silver':rank===3?'bronze':'');
+        const tdRank = document.createElement('td'); tdRank.className = 'rank';
         tdRank.textContent = rank;
         tr.appendChild(tdRank);
 
