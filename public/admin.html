@@ -73,9 +73,13 @@
     thead th{ position:sticky; top:0; background:#f8fafc; border-bottom:1px solid var(--border); padding:8px; text-align:left; z-index:1; }
     tbody td{ border-bottom:1px solid #eef2f7; padding:8px; vertical-align:top; }
     .right{text-align:right} .center{text-align:center}
-    .chip{ display:inline-block; padding:.2rem .5rem; border:1px solid var(--border); border-radius:999px; background:#fff; }
 
-    /* Auswertung: Antwort-Chip */
+    /* Sticky linke Spalten in Auswertung */
+    .col-team{ position:sticky; left:0; background:#fff; z-index:2; min-width:220px; }
+    .col-pts{  position:sticky; left:220px; background:#fff; z-index:2; text-align:center; min-width:70px; }
+    .col-bonus{position:sticky; left:290px; background:#fff; z-index:2; min-width:100px; }
+
+    /* Antwort-Chips */
     .ans{
       max-width:240px; display:inline-block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       padding:6px 8px; border-radius:8px; border:1px solid var(--border); cursor:pointer; user-select:none; font-weight:600;
@@ -144,16 +148,16 @@
     <section id="view-eval" class="view active">
       <div class="card">
         <h2 style="margin:0 0 8px">Auswertung & Zusatz/Abzug</h2>
-        <p class="sub">Klicke die Antwort-Chips (1–12): <span style="color:var(--good-fg);font-weight:700">grün = richtig</span>, <span style="color:var(--bad-fg);font-weight:700">rot = falsch</span>. Vorbefüllt anhand „Korrekte Antworten“.</p>
+        <p class="sub">Klicke die Antwort-Chips (1–12): <b style="color:#14532d">grün = richtig</b>, <b style="color:#7f1d1d">rot = falsch</b>. Vorbefüllt anhand „Korrekte Antworten“.</p>
 
         <div style="overflow:auto;">
           <table>
             <thead>
               <tr>
-                <th>Team</th>
+                <th class="col-team">Team</th>
+                <th class="col-pts center">Pkt</th>
+                <th class="col-bonus center">Zusatz ±</th>
                 <th colspan="12" class="center">Antworten 1–12</th>
-                <th class="center">Zusatz ±</th>
-                <th class="right">Rundenpunkte</th>
               </tr>
             </thead>
             <tbody id="evalBody"></tbody>
@@ -183,7 +187,7 @@
     <section id="view-correct" class="view">
       <div class="card">
         <h2 style="margin:0 0 8px">Korrekte Antworten – Fragen ↓ / Runden →</h2>
-        <p class="sub">Varianten mit Semikolon trennen (z. B. <span style="font-family:ui-monospace">berlin; b</span>). „Alles speichern“ speichert jede Runde einzeln.</p>
+        <p class="sub">Varianten mit <b>Komma</b> trennen (z. B. <span style="font-family:ui-monospace">berlin, b</span>). „Alles speichern“ speichert jede Runde einzeln.</p>
         <div class="matrix">
           <table id="correctTable">
             <thead id="correctHead"></thead>
@@ -302,6 +306,11 @@
     // team -> Set(questionIndex) (richtig)
     let manualCorrect = new Map();
 
+    // Split: Komma ODER Semikolon
+    function splitVariants(s){
+      return String(s||'').split(/[;,]/).map(x=>x.trim().toLowerCase()).filter(Boolean);
+    }
+
     function autoPrefillFromCorrect(){
       manualCorrect = new Map();
       const r = Number(roundSel.value);
@@ -312,12 +321,20 @@
         const ans = entry.answers || [];
         const set = new Set();
         for(let i=1;i<=12;i++){
-          const ok = (correctRow[`question_${i}`]||'').split(';').map(x=>x.trim().toLowerCase()).filter(Boolean);
+          const ok = splitVariants(correctRow[`question_${i}`]);
           const u = String(ans[i-1]||'').trim().toLowerCase();
           if(u && ok.includes(u)) set.add(i);
         }
         manualCorrect.set(team, set);
       }
+    }
+
+    function recalcRow(team, tr){
+      const set = manualCorrect.get(team) || new Set();
+      const bonusInput = tr.querySelector('input[data-team]');
+      const bonus = Number(bonusInput?.value||0);
+      const sumEl = tr.querySelector('.sumPts');
+      sumEl.textContent = set.size + bonus;
     }
 
     function renderEvaluation(){
@@ -345,8 +362,26 @@
         }
 
         const tr = document.createElement('tr');
-        const tdTeam = document.createElement('td'); tdTeam.textContent = team; tr.appendChild(tdTeam);
 
+        // Team (sticky)
+        const tdTeam = document.createElement('td'); tdTeam.className='col-team'; tdTeam.textContent = team; tr.appendChild(tdTeam);
+
+        // Punkte (sticky)
+        const tdPts = document.createElement('td'); tdPts.className='col-pts';
+        tdPts.innerHTML = `<b class="sumPts">0</b>`;
+        tr.appendChild(tdPts);
+
+        // Zusatz (sticky)
+        const tdExtra = document.createElement('td'); tdExtra.className='col-bonus center';
+        const inp = document.createElement('input');
+        inp.type='number'; inp.step='0.5'; inp.style.width='90px'; inp.style.textAlign='center';
+        inp.value = (scores?.[team]?.extra_round?.[`Runde ${r}`]) ?? 0;
+        inp.dataset.team = team;
+        inp.addEventListener('input', ()=> recalcRow(team, tr));
+        tdExtra.appendChild(inp);
+        tr.appendChild(tdExtra);
+
+        // Antworten 1–12
         const set = manualCorrect.get(team) || new Set();
         for(let i=1;i<=12;i++){
           const td = document.createElement('td');
@@ -362,30 +397,15 @@
               const s = manualCorrect.get(team) || new Set();
               if(s.has(i)) s.delete(i); else s.add(i);
               manualCorrect.set(team, s);
-              renderEvaluation(); // Summe aktualisieren
+              recalcRow(team, tr);
             });
           }
           td.appendChild(btn);
           tr.appendChild(td);
         }
 
-        // Zusatz / Minus
-        const tdExtra = document.createElement('td'); tdExtra.className='center';
-        const inp = document.createElement('input');
-        inp.type='number'; inp.step='0.5'; inp.style.width='90px'; inp.style.textAlign='center';
-        inp.value = (scores?.[team]?.extra_round?.[`Runde ${r}`]) ?? 0;
-        inp.dataset.team = team;
-        tdExtra.appendChild(inp);
-        tr.appendChild(tdExtra);
-
-        // Summe
-        const tdSum = document.createElement('td'); tdSum.className='right';
-        const bonus = Number(inp.value||0);
-        const total = (set.size) + bonus;
-        tdSum.innerHTML = `<b>${total}</b>`;
-        tr.appendChild(tdSum);
-
         evalBody.appendChild(tr);
+        recalcRow(team, tr); // initiale Summe
       }
 
       // submitted table
@@ -408,7 +428,7 @@
       const teamSet = new Set([...teams, ...Object.keys(byTeam||{})]);
       teamSet.forEach(team=>{
         const set = manualCorrect.get(team) || new Set();
-        const bonusInput = evalBody.querySelector(`input[data-team="${CSS.escape(team)}"]`);
+        const bonusInput = evalBody.querySelector(`tr td.col-bonus input[data-team="${CSS.escape(team)}"]`);
         const bonus = Number(bonusInput?.value||0);
 
         existing[team] = existing[team] || {};
@@ -440,6 +460,7 @@
           const td = document.createElement('td');
           const row = correct[`round_${r}`] || {};
           const inp = document.createElement('input');
+          inp.placeholder = 'Antworten mit Komma trennen';
           inp.value = row[`question_${q}`] || '';
           inp.dataset.round = r; inp.dataset.q = q;
           td.appendChild(inp); tr.appendChild(td);
