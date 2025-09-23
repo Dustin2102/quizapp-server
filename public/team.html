@@ -17,67 +17,41 @@
 
     html,body{height:100%}
     body{
-      margin:0; padding:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       color:var(--fg);
       background: linear-gradient(180deg, var(--bg-from), var(--bg-to));
       min-height:100dvh; display:flex; align-items:flex-start; justify-content:center;
     }
     .wrap{ width:min(560px, 94vw); margin:56px auto 40px; text-align:center; }
-
     header img{ max-height:64px; margin-bottom:10px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.08)); }
     h1{ font-size:clamp(1.6rem, 1.2rem + 2vw, 2.4rem); margin:.2rem 0 .4rem; }
     .sub{ color:var(--muted); margin:.2rem 0 1rem; font-size:1.02rem; }
 
-    .badge{
-      display:inline-flex; align-items:center; gap:.5rem;
-      padding:.35rem .7rem; border-radius:999px; font-weight:600; font-size:.95rem;
-      border:1px solid var(--border); background:#f8fafc; color:#0f172a;
-    }
+    .badge{ display:inline-flex; align-items:center; gap:.5rem; padding:.35rem .7rem; border-radius:999px; font-weight:600; font-size:.95rem; border:1px solid var(--border); background:#f8fafc; color:#0f172a; }
     .dot{width:.55rem;height:.55rem;border-radius:50%;}
     .open  .dot{ background:var(--accent-2); }
     .closed .dot{ background:var(--accent-3); }
     .open{ border-color:#bbf7d0; background:#f0fdf4; color:#14532d; }
     .closed{ border-color:#fecaca; background:#fef2f2; color:#7f1d1d; }
 
-    .team-badge{
-      display:inline-block; margin:.35rem 0 .8rem; font-weight:700;
-      padding:.35rem .7rem; border-radius:10px; border:1px solid var(--border); background:#fff;
-    }
-
-    .card{
-      background:var(--card); border:1px solid var(--border); border-radius:16px;
-      padding:20px; box-shadow:var(--shadow);
-    }
+    .team-badge{ display:inline-block; margin:.35rem 0 .8rem; font-weight:700; padding:.35rem .7rem; border-radius:10px; border:1px solid var(--border); background:#fff; }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); }
 
     /* Wartesection */
     .wait{ margin-top:10px; }
     .wait h2{ font-size:clamp(1.2rem,1rem + 1.2vw,1.8rem); margin:.2rem 0 .5rem; }
-    .spin{
-      width:44px; height:44px; border-radius:999px; margin:10px auto 8px;
-      border:4px solid #e5e7eb; border-top-color:var(--accent);
-      animation:spin 1s linear infinite;
-    }
+    .spin{ width:44px; height:44px; border-radius:999px; margin:10px auto 8px; border:4px solid #e5e7eb; border-top-color:var(--accent); animation:spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Liste (untereinander) */
     form{ margin-top:8px; }
     .list{ display:flex; flex-direction:column; gap:10px; }
-    .row{
-      text-align:left; background:#fff; border:1px solid var(--border); border-radius:12px;
-      padding:10px 12px; box-shadow:0 3px 10px rgba(2,6,23,.05);
-    }
+    .row{ text-align:left; background:#fff; border:1px solid var(--border); border-radius:12px; padding:10px 12px; box-shadow:0 3px 10px rgba(2,6,23,.05); }
     .row label{ display:block; font-size:.95rem; color:#334155; font-weight:600; margin-bottom:6px; }
-    .row input{
-      width:100%; padding:12px 10px; font-size:1.06rem; border:1px solid #d1d5db; border-radius:10px;
-      outline:none; transition: box-shadow .15s, border-color .15s; background:#fdfdfd;
-    }
+    .row input{ width:100%; padding:12px 10px; font-size:1.06rem; border:1px solid #d1d5db; border-radius:10px; outline:none; transition: box-shadow .15s, border-color .15s; background:#fdfdfd; }
     .row input:focus{ border-color:var(--accent); box-shadow:0 0 0 4px var(--ring); background:#fff; }
 
-    button[type="submit"]{
-      width:100%; padding:14px 22px; font-size:1.05rem; margin-top:14px; font-weight:700;
-      background:linear-gradient(135deg, var(--btn-grad-from), var(--btn-grad-to));
-      color:#fff; border:none; border-radius:14px; cursor:pointer; box-shadow:0 10px 24px rgba(34,197,94,.25);
-    }
+    button[type="submit"]{ width:100%; padding:14px 22px; font-size:1.05rem; margin-top:14px; font-weight:700; background:linear-gradient(135deg, var(--btn-grad-from), var(--btn-grad-to)); color:#fff; border:none; border-radius:14px; cursor:pointer; box-shadow:0 10px 24px rgba(34,197,94,.25); }
     button[type="submit"]:hover{ filter:saturate(1.05); background:var(--btn-grad-hover); }
 
     .status{ margin-top:12px; font-weight:700; }
@@ -118,127 +92,131 @@
 
   <script>
     // ===== Einstellungen =====
-    const MAX_ROUNDS = 10;                // bis zu 10 Runden
-    const END_ROUND_VALUE = MAX_ROUNDS+1; // „X“ (Ende) -> finished.html
-
-    // ===== Rejoin-Logik: Token + Heartbeat =====
-    const LS_TEAM = "teamName";
+    const MAX_ROUNDS = 10;
+    const LS_TEAM  = "teamName";
     const LS_TOKEN = "teamToken";
 
-    async function ensureTokenForTeam(name) {
-      try {
-        const r = await fetch("/teams/get-or-assign-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ teamName: name }),
-        });
-        if (!r.ok) return null;
-        const { token } = await r.json();
-        if (token) localStorage.setItem(LS_TOKEN, token);
-        return token || null;
-      } catch { return null; }
+    // ===== Token & Heartbeat – robust =====
+    async function assignToken(teamName){
+      const r = await fetch("/teams/get-or-assign-token", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ teamName })
+      });
+      if(!r.ok) throw new Error("token assign failed");
+      const { token } = await r.json();
+      localStorage.setItem(LS_TOKEN, token);
+      return token;
     }
 
-    async function tryRejoinByToken() {
+    async function rejoinByToken(token){
+      const r = await fetch(`/teams/rejoin?token=${encodeURIComponent(token)}`);
+      if(!r.ok) throw new Error("rejoin failed");
+      const { teamName } = await r.json();
+      if(!teamName) throw new Error("no teamName in rejoin");
+      localStorage.setItem(LS_TEAM, teamName);
+      return teamName;
+    }
+
+    async function heartbeatOnce(){
       const token = localStorage.getItem(LS_TOKEN);
-      if (!token) return null;
-      try {
-        const r = await fetch(`/teams/rejoin?token=${encodeURIComponent(token)}`);
-        if (!r.ok) return null;
-        const { teamName } = await r.json();
-        if (teamName) {
-          localStorage.setItem(LS_TEAM, teamName);
-          return teamName;
+      if(!token) return;
+      try{
+        const r = await fetch("/teams/heartbeat",{
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ token, pageHidden: document.visibilityState === "hidden" })
+        });
+        // Falls Token unbekannt (z. B. nach Löschen), neuen Token ziehen
+        if(r.status === 404){
+          const name = localStorage.getItem(LS_TEAM);
+          if(name){ await assignToken(name); }
         }
-        return null;
-      } catch { return null; }
+      }catch(e){ /* ignore */ }
     }
 
-    async function heartbeatOnce() {
+    // sendBeacon bei Tab-Wechsel/Unload
+    function heartbeatBeacon(){
       const token = localStorage.getItem(LS_TOKEN);
-      if (!token) return;
-      const hidden = document.visibilityState === "hidden";
-      try {
-        await fetch("/teams/heartbeat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, pageHidden: hidden }),
-        });
-      } catch {}
+      if(!token || !navigator.sendBeacon) return;
+      const data = JSON.stringify({ token, pageHidden: document.visibilityState === "hidden" });
+      const blob = new Blob([data], {type:"application/json"});
+      navigator.sendBeacon("/teams/heartbeat", blob);
     }
-    document.addEventListener("visibilitychange", heartbeatOnce);
+    document.addEventListener("visibilitychange", ()=>{ heartbeatOnce(); heartbeatBeacon(); });
+    window.addEventListener("focus", heartbeatOnce);
+    window.addEventListener("beforeunload", heartbeatBeacon);
 
     // ===== App-Identity =====
     let teamName = localStorage.getItem(LS_TEAM);
 
-    (async function initIdentity(){
-      if (!teamName) {
-        const rejoined = await tryRejoinByToken();
-        if (rejoined) {
-          teamName = rejoined;
-        } else {
-          window.location.href = "start.html";
-          return;
+    (async function init(){
+      // 1) Wenn kein Teamname -> zur Startseite
+      if(!teamName){
+        // Versuch: per Token rejoin (falls z. B. Startseite übersprungen wurde)
+        const tok = localStorage.getItem(LS_TOKEN);
+        if(tok){
+          try { teamName = await rejoinByToken(tok); } catch {}
         }
+        if(!teamName){ window.location.href = "start.html"; return; }
       }
-      if (!localStorage.getItem(LS_TOKEN)) {
-        await ensureTokenForTeam(teamName);
-      }
+
       document.getElementById("teamBadge").textContent = "Team: " + teamName;
 
-      // Heartbeat starten (alle 5s + bei Sichtbarkeitswechsel)
-      heartbeatOnce();
+      // 2) Token sicherstellen – fehlertolerant:
+      //    - Wenn Token fehlt -> neu zuweisen
+      //    - Wenn Token existiert, aber Server-Mapping gelöscht wurde -> rejoin versuchen, sonst neu zuweisen
+      let token = localStorage.getItem(LS_TOKEN);
+      if(!token){
+        try { token = await assignToken(teamName); } catch {}
+      }else{
+        try { await rejoinByToken(token); } catch { token = await assignToken(teamName); }
+      }
+
+      // 3) Sofort in „Aktive Teams“ auftauchen
+      await heartbeatOnce();
+
+      // 4) Regelmäßiger Heartbeat (alle 5s)
       setInterval(heartbeatOnce, 5000);
 
-      // App starten
+      // 5) App-Loop starten
       bootApp();
     })();
 
-    // ===== Bestehende App-Logik =====
-    let inputsBuilt = false;
-    let lastRound = -1;
-    let lastClosed = null;
+    // ===== Runden-/Form-Logik (wie gehabt) =====
+    let inputsBuilt=false, lastRound=-1, lastClosed=null;
 
     function bootApp(){
       refreshState();
-      setInterval(refreshState, 4000); // Auto-Refresh
+      setInterval(refreshState, 4000);
     }
 
     async function refreshState(){
       try{
         const res = await fetch("/current-round");
         const data = await res.json();
-        const aktuelleRunde = parseInt(data.round, 10);
+        const aktuelleRunde = parseInt(data.round,10);
         const closed = !!data.closed;
 
         const roundChanged = (lastRound !== aktuelleRunde);
         const reopened = (lastClosed === true && closed === false && lastRound === aktuelleRunde);
 
-        if (roundChanged || reopened) {
-          clearAllInputs();
-          resetStatus();
-        }
-        lastRound = aktuelleRunde;
-        lastClosed = closed;
+        if (roundChanged || reopened) { clearAllInputs(); resetStatus(); }
+        lastRound = aktuelleRunde; lastClosed = closed;
 
-        // Ende (X): alles > MAX_ROUNDS
         if (aktuelleRunde > MAX_ROUNDS) { window.location.href = "finished.html"; return; }
-
         updateBadge(aktuelleRunde, closed);
 
-        // Start (0) oder geschlossen/noch nicht gestartet
         if (aktuelleRunde === 0 || aktuelleRunde < 1 || closed) {
           showWait(true, aktuelleRunde, closed);
           hideForm();
           return;
         }
 
-        // Eingabe möglich (1..MAX_ROUNDS, offen)
         showWait(false);
         buildInputsOnce();
         await checkAlreadySubmitted(aktuelleRunde);
       }catch(e){
-        console.error(e);
         setBadgeText("Rundenstatus: Fehler");
       }
     }
@@ -247,11 +225,8 @@
       const badge = document.getElementById("rundeBadge");
       badge.classList.remove("open","closed");
       badge.classList.add(closed ? "closed" : "open");
-      if (runde === 0) {
-        setBadgeText(`Start – ${closed ? "geschlossen" : "offen"}`);
-      } else {
-        setBadgeText(`Runde ${runde} – ${closed ? "geschlossen" : "offen"}`);
-      }
+      if (runde === 0) setBadgeText(`Start – ${closed ? "geschlossen" : "offen"}`);
+      else setBadgeText(`Runde ${runde} – ${closed ? "geschlossen" : "offen"}`);
     }
     function setBadgeText(text){ document.getElementById("rundeInfoText").textContent = text; }
 
@@ -265,7 +240,7 @@
         document.getElementById("waitSub").textContent = "Bitte warte, bis die Moderation das Quiz startet. Der Bildschirm aktualisiert sich automatisch.";
       } else if (runde < 1 || closed) {
         document.getElementById("waitHeadline").textContent = "Runde ist noch geschlossen…";
-        document.getElementById("waitSub").textContent = "Sobald die Moderation öffnet, erscheint die Eingabe automatisch.";
+        document.getElementById("waitSub").textContent = "Sobald geöffnet wird, erscheint die Eingabe automatisch.";
       } else {
         document.getElementById("waitHeadline").textContent = "Bitte warten…";
         document.getElementById("waitSub").textContent = "Gleich geht es weiter.";
@@ -278,12 +253,12 @@
       if (inputsBuilt) { showForm(); return; }
       const eingabenDiv = document.getElementById("eingaben");
       eingabenDiv.innerHTML = "";
-      for (let i = 0; i < 12; i++) {
+      for (let i = 1; i <= 12; i++) {
         const row = document.createElement("div");
         row.className = "row";
         row.innerHTML = `
-          <label for="a${i+1}">Frage ${i+1}</label>
-          <input id="a${i+1}" name="a${i+1}" autocomplete="off" required />
+          <label for="a${i}">Frage ${i}</label>
+          <input id="a${i}" name="a${i}" autocomplete="off" required />
         `;
         eingabenDiv.appendChild(row);
       }
@@ -308,7 +283,7 @@
       try{
         const antwRes = await fetch("/data/teamAnswers.json");
         const antwData = await antwRes.json();
-        const vorhanden = antwData[`round_${aktuelleRunde}`]?.[teamName];
+        const vorhanden = antwData[`round_${aktuelleRunde}`]?.[localStorage.getItem(LS_TEAM)];
         const statusEl = document.getElementById("status");
         const form = document.getElementById("antwortForm");
 
@@ -319,7 +294,7 @@
         } else {
           form.style.display = "block";
         }
-      }catch(e){ console.error(e); }
+      }catch(e){}
     }
 
     async function submitAnswers(e){
@@ -329,12 +304,10 @@
       const answers = [];
       for (let i = 1; i <= 12; i++) answers.push(formData.get(`a${i}`) || "");
 
-      // State frisch holen
       const res = await fetch("/current-round");
       const data = await res.json();
       const aktuelleRunde = parseInt(data.round, 10);
-
-      const payload = { teamName, round: aktuelleRunde, answers };
+      const payload = { teamName: localStorage.getItem(LS_TEAM), round: aktuelleRunde, answers };
 
       try{
         const response = await fetch("/submit-answers", {
@@ -354,7 +327,7 @@
           statusEl.className = "status abgegeben";
           form.style.display = "none";
         } else if (response.status === 423) {
-          statusEl.textContent = "Runde beendet – nächste Runde in ein paar Minuten.";
+          statusEl.textContent = "Runde beendet – nächste Runde in Kürze.";
           statusEl.className = "status gesperrt";
           form.style.display = "none";
           showWait(true, aktuelleRunde, true);
@@ -362,7 +335,7 @@
           statusEl.textContent = "Fehler beim Absenden!";
           statusEl.className = "status";
         }
-      }catch(err){
+      }catch{
         document.getElementById("status").textContent = "Serverfehler";
       }
     }
