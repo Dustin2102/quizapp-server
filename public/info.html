@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quiz – Infos für die Teams</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    :root{
+      --fg:#0f172a; --muted:#64748b; --accent:#3b82f6;
+      --bg-from:#ffffff; --bg-to:#f6f8fb; --card:#ffffff;
+      --ring: rgba(59,130,246,.18); --border:#e5e7eb; --shadow: 0 12px 35px rgba(15,23,42,.16);
+      --danger:#dc2626; --danger-bg:#fef2f2; --danger-bd:#fecaca;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--fg);
+      background:radial-gradient(circle at top,#e0f2fe 0,#fff 40%,var(--bg-to) 100%);
+      min-height:100vh;
+    }
+    .wrap{
+      max-width:960px;
+      margin:24px auto 40px;
+      padding:0 16px;
+    }
+    h1{
+      margin:0 0 6px;
+      font-size:clamp(1.8rem,3vw,2.4rem);
+    }
+    .sub{
+      margin:0 0 20px;
+      color:var(--muted);
+      font-size:15px;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:20px;
+      padding:18px 18px 20px;
+      box-shadow:var(--shadow);
+      margin-bottom:16px;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      font-size:13px;
+      background:#fff;
+    }
+    .badge-primary{
+      border-color:#bfdbfe;
+      background:#eff6ff;
+      color:#1d4ed8;
+    }
+    .step-list{
+      list-style:none;
+      padding:0;
+      margin:10px 0 0;
+    }
+    .step{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      padding:10px 0;
+      border-bottom:1px solid #eef2f7;
+    }
+    .step:last-child{
+      border-bottom:none;
+      padding-bottom:0;
+    }
+    .step-num{
+      flex:0 0 28px;
+      height:28px;
+      border-radius:999px;
+      background:#eff6ff;
+      color:#1d4ed8;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+      font-size:14px;
+    }
+    .step-body{
+      flex:1 1 auto;
+    }
+    .step-title{
+      font-weight:700;
+      margin-bottom:2px;
+    }
+    .step-text{
+      margin:0;
+      font-size:14px;
+      color:var(--muted);
+    }
+    .danger-box{
+      border-radius:16px;
+      border:1px solid var(--danger-bd);
+      background:var(--danger-bg);
+      padding:12px 14px;
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      margin-bottom:14px;
+    }
+    .danger-icon{
+      flex:0 0 26px;
+      height:26px;
+      border-radius:999px;
+      background:#fee2e2;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      color:var(--danger);
+      font-size:16px;
+    }
+    .danger-text b{
+      color:var(--danger);
+    }
+    .pill-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:6px;
+    }
+    .pill{
+      padding:4px 10px;
+      border-radius:999px;
+      background:#f1f5f9;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .highlight{
+      color:#16a34a;
+      font-weight:600;
+    }
+    .footer-note{
+      margin-top:10px;
+      font-size:13px;
+      color:var(--muted);
+    }
+    @media (max-width:600px){
+      .card{padding:14px 12px 16px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header style="margin-bottom:14px; position:relative; padding-right:80px;">
+  <img src="logo.png" alt="Logo" 
+       style="
+         position:absolute;
+         top:0;
+         right:0;
+         width:60px;
+         height:auto;
+         filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25));
+       ">
+  <h1>Willkommen zur Quiz-Show</h1>
+  <p class="sub">
+        Hier steht kurz & knackig, wie das Ganze funktioniert – damit ihr euch
+        nicht aus Versehen aus eurem Team „rauskickt“. 😉
+      </p>
+    </header>
+
+    <!-- WICHTIGER HINWEIS -->
+    <section class="card">
+      <div class="danger-box">
+        <div class="danger-icon">!</div>
+        <div class="danger-text">
+          <b>Super wichtig:</b><br />
+          <b>Benutzt niemals den „Zurück“-Button im Browser</b>
+          (oder Wisch-Zurück auf dem Handy).<br />
+          Wenn ihr zurückgeht oder die Seite neu öffnet, kommt ihr
+          <b>nicht automatisch in euer Team zurück</b> und müsst euch vom Quiz-Master retten lassen.
+          <div class="pill-row">
+            <span class="pill">Nicht zurücknavigieren</span>
+            <span class="pill">Nicht neu laden, außer der Quiz-Master sagt es</span>
+            <span class="pill">Nur die Buttons auf der Seite nutzen</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABLAUF -->
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div>
+          <div class="badge badge-primary">1 · Anmeldung & Start</div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);">
+          Alles über einen QR-Code – kein App-Download nötig.
+        </div>
+      </div>
+
+      <ul class="step-list">
+        <li class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">QR-Code scannen</div>
+            <p class="step-text">
+              Nutzt die Kamera/QR-App auf eurem Handy und öffnet den angezeigten Link.
+              Jede Gruppe braucht nur <b>ein Gerät</b>.
+            </p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Teamnamen eingeben</div>
+            <p class="step-text">
+              Tragt euren <b>Teamnamen</b> ein (bitte gut lesbar – das kommt später in der Auswertung auf die Leinwand).
+              Danach landet ihr im Warten-/Runden-Bildschirm.
+            </p>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div>
+          <div class="badge badge-primary">2 · Antworten abgeben</div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);">
+          Pro Runde 12 Fragen – Abgabe nur über den Button.
+        </div>
+      </div>
+
+      <ul class="step-list">
+        <li class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Warten, bis die Runde geöffnet ist</div>
+            <p class="step-text">
+              Der Quiz-Master öffnet jede Runde. Auf eurem Gerät steht dann, dass ihr die Antworten eingeben könnt.
+            </p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Antworten eintragen</div>
+            <p class="step-text">
+              Ihr habt pro Runde <b>12 Eingabefelder</b> für Frage 1–12. Tragt dort eure Antworten ein
+              (Zahl, Wort, kurzer Begriff – wie angesagt).
+            </p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">„Abgeben“ drücken</div>
+            <p class="step-text">
+              Wenn ihr fertig seid, drückt den <b>„Abgeben“-Button</b>. Danach könnt ihr die Runde nicht mehr ändern.
+              Ihr seht dann wieder den Wartebildschirm, bis die nächste Runde gestartet wird.
+            </p>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div>
+          <div class="badge badge-primary">3 · Punkte & Auswertung</div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);">
+          Kein Live-Feedback auf dem Handy – Spannung bleibt. 😏
+        </div>
+      </div>
+
+      <ul class="step-list">
+        <li class="step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <div class="step-title">Keine Anzeige „richtig/falsch“ auf dem Handy</div>
+            <p class="step-text">
+              Auf eurem Gerät seht ihr <b>nicht</b>, ob eine Antwort richtig oder falsch war.
+              Die Auswertung läuft im Hintergrund beim Quiz-Master.
+            </p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">7</div>
+          <div class="step-body">
+            <div class="step-title">Analoge Teams</div>
+            <p class="step-text">
+              Teams, die <b>ohne Handy</b> mitspielen, geben ihre Bögen ab. Der Quiz-Master trägt sie
+              im System ein und kann sie bei der Auswertung genauso als <span class="highlight">richtig/falsch</span> markieren.
+            </p>
+          </div>
+        </li>
+        <li class="step">
+          <div class="step-num">8</div>
+          <div class="step-body">
+            <div class="step-title">Zwischenstände & Finale</div>
+            <p class="step-text">
+              Zwischenstände und die Endplatzierungen werden über die Leinwand gezeigt –
+              inklusive Teamnamen und Punkten. Also: <b>Teamname merken!</b>
+            </p>
+          </div>
+        </li>
+      </ul>
+
+      <p class="footer-note">
+        Wenn etwas nicht funktioniert (Verbindung weg, falscher Screen, etc.):<br />
+        ❯ Einfach <b>Hand heben</b> – der Quiz-Master hilft euch, statt dass ihr im Browser herumtippt.
+      </p>
+    </section>
+  </div>
+</body>
+</html>
