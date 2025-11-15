@@ -29,12 +29,15 @@
     .toolbar > *{ margin-right:8px; }
     input,select{
       padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none;
+      font-size:14px;
     }
     input:focus,select:focus{ box-shadow:0 0 0 4px var(--ring); border-color:#93c5fd; }
-    .btn{ padding:10px 14px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; }
+    .btn{ padding:10px 14px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; font-size:14px; }
     .btn:hover{ filter:saturate(1.05); }
     .btn.danger{ border-color:#fecaca; background:#fef2f2; color:#7f1d1d; }
     .btn.ok{ border-color:#bbf7d0; background:#ecfdf5; color:#14532d; }
+    .btn.primary{ border:none; background:linear-gradient(135deg,#22c55e,#16a34a); color:#fff; }
+
     .card{
       background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:var(--shadow);
       margin-top:14px; overflow:auto;
@@ -56,12 +59,27 @@
     @media(min-width:1000px){
       .grid{ grid-template-columns: 1.1fr .9fr; }
     }
+    .status{
+      margin-top:6px;
+      font-size:14px;
+      color:var(--muted);
+    }
+    .row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:flex-end;
+    }
+    .row > *{ flex:1 1 auto; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Teams verwalten</h1>
-    <p class="sub">Hier kannst du Teams entfernen und <b>Duplikate</b> bereinigen. (Entfernen löscht auch Tokens, Antworten und Scores des Teams.)</p>
+    <p class="sub">
+      Hier kannst du Teams <b>manuell hinzufügen</b>, entfernen und
+      <b>Duplikate</b> bereinigen. (Entfernen löscht auch Tokens, Antworten und Scores des Teams.)
+    </p>
 
     <div class="toolbar">
       <input id="filter" type="text" placeholder="Team filtern…" />
@@ -70,6 +88,21 @@
       <a class="btn" href="leaderboard.html" target="_blank">Leaderboard</a>
       <span id="status" class="muted"></span>
     </div>
+
+    <!-- NEU: Team manuell hinzufügen -->
+    <section class="card">
+      <h3 style="margin:0 0 10px">Team manuell hinzufügen</h3>
+      <div class="row">
+        <div style="flex:1 1 60%;">
+          <label for="addNameInp" class="muted" style="display:block;margin-bottom:4px;">Teamname (z. B. „Ohne Handy 1“)</label>
+          <input id="addNameInp" type="text" placeholder="Teamname eingeben…" />
+        </div>
+        <div style="flex:0 0 auto;">
+          <button class="btn primary" id="addBtn">Team hinzufügen</button>
+        </div>
+      </div>
+      <p id="addStatus" class="status"></p>
+    </section>
 
     <div class="grid">
       <section class="card">
@@ -100,10 +133,21 @@
     const filterInp = document.getElementById('filter');
     const reloadBtn = document.getElementById('reloadBtn');
 
+    const addNameInp = document.getElementById('addNameInp');
+    const addBtn     = document.getElementById('addBtn');
+    const addStatus  = document.getElementById('addStatus');
+
     let teams = [];
 
     function status(t){ statusEl.textContent = t || ''; }
     function esc(s){ return (s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    function setAddStatus(t){
+      addStatus.textContent = t || '';
+      if(t){
+        setTimeout(()=>{ addStatus.textContent = ''; }, 2500);
+      }
+    }
 
     async function loadTeams(){
       status('Lade …');
@@ -256,9 +300,53 @@
       }
     }
 
+    async function addTeam(){
+      const raw = addNameInp.value || '';
+      const name = raw.trim();
+      if(!name){
+        setAddStatus('Bitte einen Teamnamen eingeben.');
+        addNameInp.focus();
+        return;
+      }
+
+      try{
+        const res = await fetch('/register-team', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ teamName: name })
+        });
+
+        if(res.status === 409){
+          setAddStatus('Dieses Team existiert bereits.');
+          return;
+        }
+        if(!res.ok){
+          setAddStatus('Fehler beim Hinzufügen.');
+          return;
+        }
+
+        setAddStatus('Team hinzugefügt.');
+        addNameInp.value = '';
+        // lokal updaten ohne kompletten Reload
+        teams.push(name);
+        render();
+      }catch(e){
+        console.error(e);
+        setAddStatus('Fehler beim Hinzufügen.');
+      }
+    }
+
     // Events
     reloadBtn.addEventListener('click', loadTeams);
     filterInp.addEventListener('input', render);
+
+    addBtn.addEventListener('click', addTeam);
+    addNameInp.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        addTeam();
+      }
+    });
 
     // Init
     loadTeams();

@@ -109,7 +109,10 @@
         <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:6px">
           <div>
             <h2 style="margin:0">Auswertung & Zusatz/Abzug</h2>
-            <p class="sub" style="margin:2px 0 0">Klicke die Antwort-Chips (1–12): <b style="color:#14532d">grün = richtig</b>, <b style="color:#7f1d1d">rot = falsch</b>. Vorbefüllt anhand „Korrekte Antworten“.</p>
+            <p class="sub" style="margin:2px 0 0">
+              Klicke die Antwort-Chips (1–12): <b style="color:#14532d">grün = richtig</b>,
+              <b style="color:#7f1d1d">rot = falsch</b>. Auch Teams ohne digitale Abgabe können hier manuell gewertet werden.
+            </p>
           </div>
           <div class="badge" id="submittedBadge">Abgegeben: 0 / 0</div>
         </div>
@@ -294,7 +297,7 @@
       submittedBadge.textContent = `Abgegeben: ${submittedCount} / ${totalTeams}`;
 
       if(!valid){
-        evalBody.innerHTML=`<tr><td colspan="15" class="center"><span class="chip">Wähle eine Runde 1–${MAX_ROUNDS}</span></td></tr>`;
+        evalBody.innerHTML=`<tr><td colspan="15" class="center"><span class="badge">Wähle eine Runde 1–${MAX_ROUNDS}</span></td></tr>`;
         return;
       }
 
@@ -315,18 +318,26 @@
         // Team
         const tdTeam=document.createElement('td'); tdTeam.textContent=team; tr.appendChild(tdTeam);
 
-        // Antworten 1..12 (mit Text)
+        // Antworten 1..12 (mit Text) – IMMER klickbar, auch ohne digitale Antwort
         const set = manualCorrect.get(team) || new Set();
         for(let i=1;i<=12;i++){
           const td=document.createElement('td');
           const answerText = entry? String(entry.answers?.[i-1]||'').trim() : '';
           const on = set.has(i);
           const chip=document.createElement('span');
-          chip.className='ans ' + (entry? (on?'on':'off') : 'dis');
-          chip.title=answerText || '(keine Antwort)'; chip.textContent=answerText || '—';
-          if(entry){
-            chip.addEventListener('click',()=>{ const s=manualCorrect.get(team)||new Set(); s.has(i)?s.delete(i):s.add(i); manualCorrect.set(team,s); recalcRow(team,tr); });
-          }
+          chip.className='ans ' + (on ? 'on' : 'off');
+          chip.title=answerText || '(keine Antwort)';
+          chip.textContent=answerText || '—';
+
+          chip.addEventListener('click',()=>{
+            const s = manualCorrect.get(team) || new Set();
+            if(s.has(i)) s.delete(i); else s.add(i);
+            manualCorrect.set(team,s);
+            recalcRow(team,tr);
+            // Optik umschalten
+            chip.className='ans ' + (s.has(i) ? 'on' : 'off');
+          });
+
           td.appendChild(chip); tr.appendChild(td);
         }
 
@@ -345,8 +356,14 @@
       }
 
       // submitted table
-      for(const s of submitted){ const tr=document.createElement('tr'); tr.innerHTML=`<td>${esc(s.team)}</td><td class="right">${s.count} / 12</td><td>${esc(s.ts)}</td>`; submittedBody.appendChild(tr); }
-      if(submitted.length===0){ submittedBody.innerHTML=`<tr><td colspan="3" class="center"><span class="chip">Keine Abgaben</span></td></tr>`; }
+      for(const s of submitted){
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${esc(s.team)}</td><td class="right">${s.count} / 12</td><td>${esc(s.ts)}</td>`;
+        submittedBody.appendChild(tr);
+      }
+      if(submitted.length===0){
+        submittedBody.innerHTML=`<tr><td colspan="3" class="center"><span class="badge">Keine Abgaben</span></td></tr>`;
+      }
     }
 
     async function saveScores(){
@@ -369,52 +386,101 @@
     // ---------- KORREKTE ANTWORTEN (gedreht) ----------
     function buildCorrectMatrix(){
       correctHead.innerHTML='';
-      const trh=document.createElement('tr'); trh.innerHTML='<th class="sticky-left">Frage</th>'; for(let r=1;r<=MAX_ROUNDS;r++){ const th=document.createElement('th'); th.textContent='Runde '+r; trh.appendChild(th); } correctHead.appendChild(trh);
+      const trh=document.createElement('tr');
+      trh.innerHTML='<th class="sticky-left">Frage</th>';
+      for(let r=1;r<=MAX_ROUNDS;r++){
+        const th=document.createElement('th'); th.textContent='Runde '+r; trh.appendChild(th);
+      }
+      correctHead.appendChild(trh);
+
       correctBody.innerHTML='';
       for(let q=1;q<=12;q++){
-        const tr=document.createElement('tr'); const tl=document.createElement('td'); tl.textContent='F'+q; tl.className='sticky-left'; tr.appendChild(tl);
+        const tr=document.createElement('tr');
+        const tl=document.createElement('td'); tl.textContent='F'+q; tl.className='sticky-left'; tr.appendChild(tl);
         for(let r=1;r<=MAX_ROUNDS;r++){
-          const td=document.createElement('td'); const row=correct[`round_${r}`]||{}; const inp=document.createElement('input');
-          inp.placeholder='mit Komma trennen'; inp.value=row[`question_${q}`]||''; inp.dataset.round=r; inp.dataset.q=q; td.appendChild(inp); tr.appendChild(td);
+          const td=document.createElement('td');
+          const row=correct[`round_${r}`]||{};
+          const inp=document.createElement('input');
+          inp.placeholder='mit Komma trennen';
+          inp.value=row[`question_${q}`]||'';
+          inp.dataset.round=r; inp.dataset.q=q;
+          td.appendChild(inp); tr.appendChild(td);
         }
         correctBody.appendChild(tr);
       }
     }
+
     async function saveAllCorrect(){
-      const perRound={}; document.querySelectorAll('#correctBody input').forEach(inp=>{const r=+inp.dataset.round,q=+inp.dataset.q; perRound[r]=perRound[r]||{}; perRound[r][`question_${q}`]=inp.value||'';});
+      const perRound={};
+      document.querySelectorAll('#correctBody input').forEach(inp=>{
+        const r=+inp.dataset.round, q=+inp.dataset.q;
+        perRound[r]=perRound[r]||{};
+        perRound[r][`question_${q}`]=inp.value||'';
+      });
       for(const r of Object.keys(perRound).map(Number).sort((a,b)=>a-b)){
-        await fetch('/save-correct-answers',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({round:r, correctAnswers: perRound[r]}) });
+        await fetch('/save-correct-answers',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({round:r, correctAnswers: perRound[r]})
+        });
       }
-      correct = await fetch('/correct-answers').then(r=>r.json()).catch(()=>({})); setCorr('Alle Runden gespeichert.');
+      correct = await fetch('/correct-answers').then(r=>r.json()).catch(()=>({}));
+      setCorr('Alle Runden gespeichert.');
     }
 
     // ---------- ABGABEN ----------
     function renderAnswersDetail(){
       const r=Number(roundSel.value), byTeam=answersDb[`round_${r}`]||{};
       const teamList=Array.from(new Set([...teams, ...Object.keys(byTeam)])).sort((a,b)=>a.localeCompare(b,'de'));
-      answersHead.innerHTML=''; const trh=document.createElement('tr'); trh.appendChild(Object.assign(document.createElement('th'),{textContent:'Team'}));
-      for(let i=1;i<=12;i++){ const th=document.createElement('th'); th.textContent='Frage '+i; trh.appendChild(th); } answersHead.appendChild(trh);
-      answersBody.innerHTML=''; for(const team of teamList){ const tr=document.createElement('tr'); const tdTeam=document.createElement('td'); tdTeam.textContent=team; tr.appendChild(tdTeam);
-        const entry=byTeam[team]; for(let i=0;i<12;i++){ const td=document.createElement('td'); td.textContent= entry? String(entry.answers?.[i]||'') : ''; tr.appendChild(td); } answersBody.appendChild(tr); }
+      answersHead.innerHTML='';
+      const trh=document.createElement('tr');
+      trh.appendChild(Object.assign(document.createElement('th'),{textContent:'Team'}));
+      for(let i=1;i<=12;i++){
+        const th=document.createElement('th'); th.textContent='Frage '+i; trh.appendChild(th);
+      }
+      answersHead.appendChild(trh);
+
+      answersBody.innerHTML='';
+      for(const team of teamList){
+        const tr=document.createElement('tr');
+        const tdTeam=document.createElement('td'); tdTeam.textContent=team; tr.appendChild(tdTeam);
+        const entry=byTeam[team];
+        for(let i=0;i<12;i++){
+          const td=document.createElement('td');
+          td.textContent= entry? String(entry.answers?.[i]||'') : '';
+          tr.appendChild(td);
+        }
+        answersBody.appendChild(tr);
+      }
     }
 
     // Actions
     async function applyRound(closedOverride=null){
-      const sel=Number(roundSel.value), roundToSet=(sel===0?0:(sel===END_ROUND_VALUE?MAX_ROUNDS+1:sel));
+      const sel=Number(roundSel.value),
+            roundToSet=(sel===0?0:(sel===END_ROUND_VALUE?MAX_ROUNDS+1:sel));
       const closedVal=(closedOverride===null)?(statusSel.value==='closed'):!!closedOverride;
-      await fetch('/current-round',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({round:roundToSet, closed:closedVal}) });
-      await loadCore(); setTop('Gespeichert.');
-    }
-    async function doReset(){
-      if(!confirm('Wirklich ALLES zurücksetzen?\n• Teams, Antworten, Punkte werden gelöscht\n• Runde -> 0 (offen)\n• Korrekte Antworten bleiben erhalten')) return;
-      await fetch('/reset-teams',{method:'POST'}); manualCorrect.clear();
-      await loadCore(); await loadAll(); buildCorrectMatrix(); renderEvaluation(); renderAnswersDetail(); setTop('Zurückgesetzt.');
+      await fetch('/current-round',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({round:roundToSet, closed:closedVal})
+      });
+      await loadCore();
+      setTop('Gespeichert.');
     }
 
-    // Auto-Refresh für Auswertung/Abgaben (alle 4s)
+    async function doReset(){
+      if(!confirm('Wirklich ALLES zurücksetzen?\n• Teams, Antworten, Punkte werden gelöscht\n• Runde -> 0 (offen)\n• Korrekte Antworten bleiben erhalten')) return;
+      await fetch('/reset-teams',{method:'POST'});
+      manualCorrect.clear();
+      await loadCore(); await loadAll();
+      buildCorrectMatrix(); renderEvaluation(); renderAnswersDetail();
+      setTop('Zurückgesetzt.');
+    }
+
+    // Auto-Refresh für Abgaben (alle 4s) – Auswertung bleibt in Ruhe
     async function periodicRefresh(){
       await loadAll();
-      renderEvaluation();
+      // Nur die Antworten-Matrix neu aufbauen, damit neue Abgaben sichtbar sind
       renderAnswersDetail();
     }
 
@@ -425,12 +491,23 @@
 
     saveScoresBtn.addEventListener('click', saveScores);
     saveAllCorrectBtn.addEventListener('click', saveAllCorrect);
-    roundSel.addEventListener('change', ()=>{ manualCorrect.clear(); renderEvaluation(); renderAnswersDetail(); });
-    autoFillBtn.addEventListener('click', ()=>{ autoPrefillFromCorrect(); renderEvaluation(); setEval('Vorbefüllt.'); });
+    roundSel.addEventListener('change', ()=>{
+      manualCorrect.clear();
+      renderEvaluation();
+      renderAnswersDetail();
+    });
+    autoFillBtn.addEventListener('click', ()=>{
+      autoPrefillFromCorrect();
+      renderEvaluation();
+      setEval('Vorbefüllt.');
+    });
 
     (async function init(){
-      await loadCore(); await loadAll();
-      buildCorrectMatrix(); renderEvaluation(); renderAnswersDetail();
+      await loadCore();
+      await loadAll();
+      buildCorrectMatrix();
+      renderEvaluation();
+      renderAnswersDetail();
       // Start Auto-Refresh
       refreshTimer = setInterval(periodicRefresh, 4000);
       window.addEventListener('beforeunload', ()=> clearInterval(refreshTimer));
