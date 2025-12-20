@@ -11,7 +11,7 @@
       --shadow:0 8px 28px rgba(2,6,23,.08);
       --good-bg:#ecfdf5; --good-bd:#bbf7d0; --good-fg:#14532d;
       --bad-bg:#fef2f2; --bad-bd:#fecaca; --bad-fg:#7f1d1d;
-      --chip-w:120px; /* kompakt, damit alles drauf passt */
+      --chip-w:120px;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -22,9 +22,7 @@
       background:linear-gradient(180deg,#fff,var(--bg));
       min-height:100dvh;
     }
-    /* Breit genug, damit 12 Antworten + Punkte + Zusatz auf 1920px ohne Scrollen passen */
     .wrap{ width:min(2000px,98vw); margin:24px auto 40px; }
-
     h1{ margin:0 0 6px; }
     .sub{ color:var(--muted); margin:0 0 16px; }
 
@@ -86,7 +84,6 @@
     tbody td{ border-bottom:1px solid #eef2f7; padding:8px; vertical-align:top; }
     .right{text-align:right} .center{text-align:center}
 
-    /* Antwort-Chips */
     .ans{
       max-width:var(--chip-w);
       display:inline-block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -97,7 +94,6 @@
     .ans.off{ background:var(--bad-bg); border-color:var(--bad-bd); color:var(--bad-fg); }
     .ans.dis{ opacity:.45; cursor:not-allowed; }
 
-    /* Korrekte Antworten */
     .matrix{ max-height:62vh; overflow:auto; border-radius:12px; }
     .matrix input{
       width:220px; max-width:220px; padding:8px;
@@ -141,7 +137,6 @@
       <a class="link" href="leaderboard.html" target="_blank">Leaderboard</a>
       <a class="link" href="active.html" target="_blank">Aktive Teams</a>
       <a class="link" href="teams.html" target="_blank">Teams verwalten</a>
-      <!-- NEU: Info-Seite -->
       <a class="link info-btn" href="info.html" target="_blank">Info</a>
 
       <span class="badge" id="teamsBadge">Teams: 0</span>
@@ -279,6 +274,17 @@
     const setCorr = t => { corrStatus.textContent = t || ''; setTimeout(() => corrStatus.textContent = '', 2000); };
     const splitVariants = s => String(s || '').split(/[;,]/).map(x => x.trim().toLowerCase()).filter(Boolean);
 
+    // Best-practice Fetch: vermeidet Caching-Probleme (dein "erst nach Refresh")
+    async function fetchJSON(url, fallback){
+      try{
+        const res = await fetch(url, { cache: 'no-store' });
+        if(!res.ok) return fallback;
+        return await res.json();
+      }catch(e){
+        return fallback;
+      }
+    }
+
     // Runden
     function buildRoundOptions(selected){
       roundSel.innerHTML = '';
@@ -296,11 +302,13 @@
     }));
 
     async function loadCore(){
-      const cr = await fetch('/current-round').then(r => r.json());
+      const cr = await fetchJSON('/current-round', { round: 1, closed: false });
       currentRound = Number(cr.round || 1);
       closed = !!cr.closed;
+
       const sel = (currentRound < 1) ? 0 : (currentRound > MAX_ROUNDS ? END_ROUND_VALUE : currentRound);
       buildRoundOptions(sel);
+
       statusSel.value = closed ? 'closed' : 'open';
       liveBadge.className = 'badge ' + (closed ? 'closed' : 'open');
       liveBadge.textContent =
@@ -311,10 +319,11 @@
 
     async function loadAll(){
       const [t, s, c, a] = await Promise.all([
-        fetch('/teams').then(r => r.json()).catch(() => []),
-        fetch('/scores').then(r => r.json()).catch(() => ({})),
-        fetch('/correct-answers').then(r => r.json()).catch(() => ({})),
-        fetch('/data/teamAnswers.json').then(r => r.json()).catch(() => ({})),
+        fetchJSON('/teams', []),
+        fetchJSON('/scores', {}),
+        fetchJSON('/correct-answers', {}),
+        // Team-Antworten: cache-busting + no-store, damit es wirklich live ist
+        fetchJSON('/data/teamAnswers.json?ts=' + Date.now(), {}),
       ]);
       teams = t; scores = s; correct = c; answersDb = a;
       teamsBadge.textContent = `Teams: ${Array.isArray(teams) ? teams.length : 0}`;
@@ -363,6 +372,38 @@
       tr.querySelector('.sumPts').textContent = set.size + bonus;
     }
 
+    function renderSubmittedQuickOnly(){
+      const r = Number(roundSel.value);
+      const totalTeams = Array.isArray(teams) ? teams.length : 0;
+      const byTeam = answersDb[`round_${r}`] || {};
+      const submittedCount = Object.keys(byTeam).length;
+      submittedBadge.textContent = `Abgegeben: ${submittedCount} / ${totalTeams}`;
+
+      const submitted = [];
+      for(const team of Object.keys(byTeam)){
+        const entry = byTeam[team];
+        const ts = entry?.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '–';
+        submitted.push({
+          team,
+          count: (entry?.answers || []).filter(v => String(v || '').trim()).length,
+          ts
+        });
+      }
+      submitted.sort((a,b)=>a.team.localeCompare(b.team,'de'));
+
+      submittedBody.innerHTML = '';
+      for(const s of submitted){
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          `<td>${esc(s.team)}</td><td class="right">${s.count} / 12</td><td>${esc(s.ts)}</td>`;
+        submittedBody.appendChild(tr);
+      }
+      if(submitted.length === 0){
+        submittedBody.innerHTML =
+          `<tr><td colspan="3" class="center"><span class="badge">Keine Abgaben</span></td></tr>`;
+      }
+    }
+
     function renderEvaluation(){
       const r = Number(roundSel.value),
             valid = (r >= 1 && r <= MAX_ROUNDS);
@@ -378,6 +419,8 @@
       if(!valid){
         evalBody.innerHTML =
           `<tr><td colspan="15" class="center"><span class="badge">Wähle eine Runde 1–${MAX_ROUNDS}</span></td></tr>`;
+        submittedBody.innerHTML =
+          `<tr><td colspan="3" class="center"><span class="badge">Keine Abgaben</span></td></tr>`;
         return;
       }
 
@@ -404,7 +447,7 @@
         tdTeam.textContent = team;
         tr.appendChild(tdTeam);
 
-        // Antworten 1..12 – IMMER klickbar (auch ohne digitale Antwort)
+        // Antworten 1..12 – IMMER klickbar
         const set = manualCorrect.get(team) || new Set();
         for(let i=1;i<=12;i++){
           const td = document.createElement('td');
@@ -453,6 +496,7 @@
       }
 
       // submitted table
+      submitted.sort((a,b)=>a.team.localeCompare(b.team,'de'));
       for(const s of submitted){
         const tr = document.createElement('tr');
         tr.innerHTML =
@@ -466,7 +510,7 @@
     }
 
     async function saveScores(){
-      const existing = await fetch('/scores').then(r => r.json()).catch(() => ({}));
+      const existing = await fetchJSON('/scores', {});
       const r = Number(roundSel.value);
       if(!(r >= 1 && r <= MAX_ROUNDS)){
         setEval('Wähle Runde 1–'+MAX_ROUNDS);
@@ -540,7 +584,7 @@
           body: JSON.stringify({ round:r, correctAnswers: perRound[r] })
         });
       }
-      correct = await fetch('/correct-answers').then(r => r.json()).catch(() => ({}));
+      correct = await fetchJSON('/correct-answers', {});
       setCorr('Alle Runden gespeichert.');
     }
 
@@ -608,10 +652,14 @@
       setTop('Zurückgesetzt.');
     }
 
-    // Auto-Refresh für Abgaben (alle 4s) – Auswertung bleibt in Ruhe, damit Klicks nicht überschrieben werden
+    // Auto-Refresh:
+    // - Lädt neue Abgaben/Antworten regelmäßig rein
+    // - Rendert NUR die Abgaben-Ansichten (Matrix + Schnellübersicht),
+    //   damit deine Auswertung (Chips/Bonus) nicht überschrieben wird.
     async function periodicRefresh(){
       await loadAll();
       renderAnswersDetail();
+      renderSubmittedQuickOnly();
     }
 
     applyBtn.addEventListener('click', () => applyRound(null));
@@ -621,11 +669,14 @@
 
     saveScoresBtn.addEventListener('click', saveScores);
     saveAllCorrectBtn.addEventListener('click', saveAllCorrect);
+
     roundSel.addEventListener('change', () => {
       manualCorrect.clear();
       renderEvaluation();
       renderAnswersDetail();
+      renderSubmittedQuickOnly();
     });
+
     autoFillBtn.addEventListener('click', () => {
       autoPrefillFromCorrect();
       renderEvaluation();
@@ -638,8 +689,10 @@
       buildCorrectMatrix();
       renderEvaluation();
       renderAnswersDetail();
-      // Start Auto-Refresh
-      refreshTimer = setInterval(periodicRefresh, 4000);
+      renderSubmittedQuickOnly();
+
+      // „Heute“-Setup: 2s ist angenehm live, aber nicht übertrieben
+      refreshTimer = setInterval(periodicRefresh, 2000);
       window.addEventListener('beforeunload', () => clearInterval(refreshTimer));
     })();
   </script>

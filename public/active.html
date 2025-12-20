@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Aktive Teams</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
   <style>
     body{font-family:system-ui,Arial,sans-serif;background:#f6f8fb;margin:0;padding:20px;}
     h1{margin-top:0}
@@ -24,6 +24,7 @@
 <body>
   <h1>Aktive Teams</h1>
   <p>Zeigt, wer gerade auf der Antwortseite ist. Aktualisiert sich alle 2 Sekunden.</p>
+
   <table>
     <thead>
       <tr>
@@ -38,58 +39,106 @@
   </table>
 
   <script>
-    const tbody=document.getElementById('tbody');
+    const tbody = document.getElementById('tbody');
 
-    async function removeTeam(name){
-      if(!confirm(`Team "${name}" wirklich löschen?`)) return;
-      try{
-        const res = await fetch('/admin/remove-team',{
-          method:'POST',
-          headers:{
-            'Content-Type':'application/json',
-            // Basic Auth (admin/passwort) -> Browser fragt automatisch nach
-          },
-          body: JSON.stringify({teamName:name})
+    // Klick-Handler EINMAL setzen (bleibt stabil, auch wenn tbody alle 2s neu gerendert wird)
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button.remove');
+      if (!btn) return;
+
+      const teamName = btn.getAttribute('data-team') || '';
+      if (!teamName) return;
+
+      removeTeam(teamName);
+    });
+
+    async function removeTeam(name) {
+      if (!confirm(`Team "${name}" wirklich löschen?`)) return;
+
+      try {
+        const res = await fetch('/admin/remove-team', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ teamName: name })
         });
-        if(res.ok){
-          load();
+
+        if (res.ok) {
+          await load();
         } else {
-          alert("Fehler beim Löschen: "+res.status);
+          const txt = await res.text().catch(() => '');
+          alert("Fehler beim Löschen: " + res.status + (txt ? ("\n" + txt) : ""));
         }
-      }catch(e){
-        alert("Fehler beim Löschen: "+e.message);
+      } catch (e) {
+        alert("Fehler beim Löschen: " + e.message);
       }
     }
 
-    async function load(){
-      try{
-        const res=await fetch('/admin/active-teams');
-        if(!res.ok){
-          tbody.innerHTML='<tr><td colspan=5>Fehler: '+res.status+'</td></tr>';return;
-        }
-        const data=await res.json();
-        tbody.innerHTML='';
-        if(data.length===0){
-          tbody.innerHTML='<tr><td colspan=5 class="muted">Keine Teams</td></tr>';
+    function makeCell(text) {
+      const td = document.createElement('td');
+      td.textContent = text;
+      return td;
+    }
+
+    async function load() {
+      try {
+        const res = await fetch('/admin/active-teams');
+        if (!res.ok) {
+          tbody.innerHTML = `<tr><td colspan="5">Fehler: ${res.status}</td></tr>`;
           return;
         }
-        data.sort((a,b)=>a.teamName.localeCompare(b.teamName,'de'));
-        for(const t of data){
-          const tr=document.createElement('tr');
-          tr.innerHTML=`
-            <td>${t.teamName}</td>
-            <td>${t.active?'<span class="ok">aktiv</span>':'<span class="no">abwesend</span>'}</td>
-            <td>${t.agoSec}s ago</td>
-            <td>${t.pageHidden?'<span class="no">versteckt</span>':'<span class="ok">sichtbar</span>'}</td>
-            <td><button class="remove" onclick="removeTeam('${t.teamName}')">Löschen</button></td>
-          `;
+
+        const data = await res.json();
+        tbody.innerHTML = '';
+
+        if (!Array.isArray(data) || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="muted">Keine Teams</td></tr>';
+          return;
+        }
+
+        data.sort((a, b) => String(a.teamName).localeCompare(String(b.teamName), 'de'));
+
+        for (const t of data) {
+          const tr = document.createElement('tr');
+
+          // Team (als Text, damit keine Sonderzeichen/HTML Probleme machen)
+          tr.appendChild(makeCell(String(t.teamName ?? '')));
+
+          // Status
+          const tdStatus = document.createElement('td');
+          tdStatus.innerHTML = t.active
+            ? '<span class="ok">aktiv</span>'
+            : '<span class="no">abwesend</span>';
+          tr.appendChild(tdStatus);
+
+          // Zuletzt gesehen
+          tr.appendChild(makeCell(`${t.agoSec}s ago`));
+
+          // Tab
+          const tdTab = document.createElement('td');
+          tdTab.innerHTML = t.pageHidden
+            ? '<span class="no">versteckt</span>'
+            : '<span class="ok">sichtbar</span>';
+          tr.appendChild(tdTab);
+
+          // Aktion
+          const tdAction = document.createElement('td');
+          const btn = document.createElement('button');
+          btn.className = 'remove';
+          btn.type = 'button';
+          btn.textContent = 'Löschen';
+          btn.setAttribute('data-team', String(t.teamName ?? ''));
+          tdAction.appendChild(btn);
+          tr.appendChild(tdAction);
+
           tbody.appendChild(tr);
         }
-      }catch(e){
-        tbody.innerHTML='<tr><td colspan=5>Fehler beim Laden</td></tr>';
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="5">Fehler beim Laden</td></tr>';
       }
     }
-    load(); setInterval(load,2000);
+
+    load();
+    setInterval(load, 2000);
   </script>
 </body>
 </html>
